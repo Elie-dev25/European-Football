@@ -1,0 +1,27 @@
+# Data manipulation
+pandas
+numpy
+requests
+
+# AWS
+boto3
+
+# Snowflake
+snowflake-connector-python
+snowflake-sqlalchemy
+
+# Airflow
+apache-airflow
+
+# dbt
+dbt-core
+dbt-snowflake
+
+# Environment variables
+python-dotenv
+
+# Testing
+pytest
+
+# Logging
+loguru
