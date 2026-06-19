@@ -1,21 +1,26 @@
 # 🏆 European Football Analytics Platform
 
-An end-to-end data engineering pipeline that collects, transforms, and analyzes
-football data from the 5 major European leagues using a modern data stack.
+An end-to-end data engineering pipeline — currently under active development — that will collect,
+transform, and analyze football statistics from the 5 major European leagues using a modern,
+production-grade data stack.
 
 ![Status](https://img.shields.io/badge/Status-In%20Progress-yellow)
+![Phase](https://img.shields.io/badge/Phase-1%20%E2%80%94%20Ingestion-blue)
 ![Python](https://img.shields.io/badge/Python-3.8+-blue)
 ![Airflow](https://img.shields.io/badge/Airflow-2.0+-green)
 ![dbt](https://img.shields.io/badge/dbt-1.0+-orange)
-![Docker](https://img.shields.io/badge/Docker-ready-blue)
+![Docker](https://img.shields.io/badge/Docker-planned-lightgrey)
 ![Snowflake](https://img.shields.io/badge/Snowflake-❄️-lightblue)
+
+> 🚧 **This project is actively being built.** Every phase is documented as it is completed.
+> The architecture and decisions below reflect the full target state — not the current state.
+> See [Current Status](#-current-status) for exactly where things stand today.
 
 ---
 
 ## 📋 Description
 
-This project builds a production-grade data pipeline covering the 5 major
-European football leagues:
+This project builds a **production-grade data pipeline** covering the 5 major European football leagues:
 
 - 🏴󠁧󠁢󠁥󠁮󠁧󠁿 **Premier League** (England)
 - 🇪🇸 **La Liga** (Spain)
@@ -23,16 +28,67 @@ European football leagues:
 - 🇩🇪 **Bundesliga** (Germany)
 - 🇫🇷 **Ligue 1** (France)
 
+**Why this project?**
+- **Multi-source ingestion** — demonstrates the ability to handle real-world data complexity
+- **Modern stack** — tools used in production at data-driven companies in 2025-2026
+- **Concrete domain** — football is universally understood, making it easy for any recruiter to evaluate the analytical output
+
 ---
 
-## 🏗️ Global Architecture
+## 🚧 Current Status
+
+> Last updated: June 2026
+
+| Phase | Description | Status |
+|-------|-------------|--------|
+| **Phase 1** | Ingestion — API-Football | ✅ Done |
+| **Phase 1** | Ingestion — Open-Meteo (weather) | 🔄 In progress |
+| **Phase 1** | Ingestion — Kaggle SQLite (historical) | ⬜ Not started |
+| **Phase 2** | AWS S3 — Bronze layer upload | ⬜ Not started |
+| **Phase 3** | Snowflake — Silver layer | ⬜ Not started |
+| **Phase 4** | dbt — Gold layer transformations | ⬜ Not started |
+| **Phase 5** | Apache Airflow — Orchestration | ⬜ Not started |
+| **Phase 6** | Docker — Containerization | ⬜ Not started |
+| **Phase 7** | Tests (pytest) + Final documentation | ⬜ Not started |
+
+**What works today:**
+- Full extraction pipeline for API-Football: standings, fixtures, top scorers, top assists
+- Covers all 5 leagues for season 2022 (extensible to 2023–2024 with one config change)
+- Automatic retry on rate-limit errors (429), structured logging compatible with Airflow
+- Raw data saved locally as JSON files under `data/raw/api_football/`
+
+**What does not work yet:**
+- Weather ingestion (in progress)
+- No S3 upload yet — data stays local
+- No Snowflake, dbt, Airflow, or Docker setup yet
+- `docker-compose up` in the Getting Started section will not work until Phase 6
+
+---
+
+## 🗄️ Data Sources
+
+| Source | Type | Data | Period | Why |
+|--------|------|------|--------|-----|
+| [API-Football](https://api-football.com) | REST API | Standings, fixtures, top scorers, top assists | 2022–2024 | Structured, recent football data |
+| [Open-Meteo](https://open-meteo.com) | REST API | Weather at stadium cities at match time | 2022–2024 | Free, open-source, historical data back to 1940 — no API key required |
+| [Kaggle Soccer DB](https://www.kaggle.com) | SQLite file | Historical match and player data | 2008–2016 | Fills the historical gap not covered by the API-Football free tier |
+| [OpenStreetMap Nominatim](https://nominatim.openstreetmap.org) | REST API | GPS coordinates of stadiums | One-shot | Free geocoding API used to generate `dbt/seeds/stadiums.csv` — no API key required |
+
+**Why 4 separate sources?**
+In real data engineering environments, data never comes from a single place. Managing multiple heterogeneous sources — APIs, files, databases — is a core skill this project intentionally demonstrates.
+
+**Note on weather source:** OpenWeather was initially planned but its free tier does not include historical data access. Open-Meteo was selected as a replacement — it provides free historical weather data globally since 1940, is fully open-source, and requires no API key for non-commercial use.
+
+---
+
+## 🏗️ Target Architecture
 
 ```mermaid
 flowchart TD
     subgraph Sources["📦 Data Sources"]
         A[🔌 API-Football\nMatch results · Standings · Stats]
-        B[🌤️ OpenWeather API\nWeather conditions]
-        C[📂 Kaggle CSV\nHistorical data]
+        B[🌤️ Open-Meteo API\nHistorical weather conditions]
+        C[📂 Kaggle SQLite\nHistorical data 2008–2016]
     end
 
     subgraph Ingestion["⚙️ Ingestion Layer"]
@@ -40,12 +96,12 @@ flowchart TD
     end
 
     subgraph Storage["🗄️ Storage Layer"]
-        E[(🪣 AWS S3\nBronze - Raw Data)]
-        F[(❄️ Snowflake\nSilver - Cleaned Data)]
+        E[(🪣 AWS S3\nBronze — Raw Data)]
+        F[(❄️ Snowflake\nSilver — Cleaned Data)]
     end
 
     subgraph Transformation["🔄 Transformation Layer"]
-        G[dbt\nGold - Analytics Tables]
+        G[dbt\nGold — Analytics Tables]
     end
 
     subgraph Orchestration["🎯 Orchestration"]
@@ -55,8 +111,8 @@ flowchart TD
     subgraph Insights["📈 Insights"]
         I[Home vs Away rates]
         J[Goals per league]
-        K[Weather impact]
-        L[Top scorers]
+        K[Weather impact on results]
+        L[Top scorers & assists]
     end
 
     A --> D
@@ -86,30 +142,30 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    subgraph Bronze["🥉 Bronze Layer - AWS S3"]
-        B1[raw_matches.json]
-        B2[raw_standings.json]
-        B3[raw_players.json]
+    subgraph Bronze["🥉 Bronze Layer — AWS S3"]
+        B1[raw_standings.json]
+        B2[raw_fixtures.json]
+        B3[raw_scorers.json]
         B4[raw_weather.json]
-        B5[raw_history.csv]
+        B5[historical_data.sqlite]
     end
 
-    subgraph Silver["🥈 Silver Layer - Snowflake"]
+    subgraph Silver["🥈 Silver Layer — Snowflake"]
         S1[matches_cleaned]
         S2[standings_cleaned]
         S3[players_cleaned]
         S4[weather_cleaned]
     end
 
-    subgraph Gold["🥇 Gold Layer - dbt"]
+    subgraph Gold["🥇 Gold Layer — dbt"]
         G1[mart_league_performance]
         G2[mart_team_stats]
         G3[mart_player_rankings]
         G4[mart_weather_impact]
     end
 
-    B1 --> S1
-    B2 --> S2
+    B1 --> S2
+    B2 --> S1
     B3 --> S3
     B4 --> S4
     B5 --> S1
@@ -126,9 +182,15 @@ flowchart LR
     style Gold fill:#ffd700,color:#000
 ```
 
+**Why Medallion?**
+- **Bronze** — raw data preserved as-is, always recoverable
+- **Silver** — cleaned and structured, ready for analysis
+- **Gold** — analytics-ready tables, directly usable for insights and dashboards
+- Industry standard: separates concerns, allows reprocessing at any stage without rebuilding everything
+
 ---
 
-## 🔄 Pipeline Flow
+## 🔄 Target Pipeline Flow
 
 ```mermaid
 sequenceDiagram
@@ -139,7 +201,7 @@ sequenceDiagram
     participant DBT as dbt
 
     AF->>PY: Trigger ingestion
-    PY->>PY: Extract from APIs & CSV
+    PY->>PY: Extract from APIs & SQLite
     PY->>S3: Store raw data (Bronze)
     AF->>SF: Trigger loading
     S3->>SF: Load to Silver tables
@@ -153,69 +215,82 @@ sequenceDiagram
 
 ## 📁 Project Structure
 
-```mermaid
-graph TD
-    Root[🏆 European-Football/]
-
-    Root --> P[📁 pipelines/]
-    Root --> D[📁 dags/]
-    Root --> DBT[📁 dbt/]
-    Root --> DOC[📁 docker/]
-    Root --> T[📁 tests/]
-    Root --> C[📁 configs/]
-    Root --> L[📁 logs/]
-
-    P --> P1[📁 api_football/]
-    P --> P2[📁 api_weather/]
-    P --> P3[📁 kaggle/]
-
-    P1 --> P1A[extract.py]
-    P2 --> P2A[extract.py]
-    P3 --> P3A[extract.py]
-
-    DBT --> M[📁 models/]
-    M --> M1[📁 staging/]
-    M --> M2[📁 intermediate/]
-    M --> M3[📁 marts/]
-
-    D --> D1[football_pipeline.py]
-    DOC --> DOC1[Dockerfile]
-    DOC --> DOC2[docker-compose.yml]
-
-    style Root fill:#1a1a2e,color:#fff
-    style P fill:#16213e,color:#fff
-    style DBT fill:#533483,color:#fff
-    style D fill:#e94560,color:#fff
-    style T fill:#2d6a4f,color:#fff
+```
+European-Football/
+│
+├── pipelines/
+│   ├── api_football/
+│   │   └── extract.py          ✅ Done — standings, fixtures, scorers, assists
+│   ├── api_weather/
+│   │   └── extract.py          🔄 In progress — Open-Meteo historical weather
+│   └── kaggle/
+│       └── extract.py          ⬜ Not started — SQLite extraction
+│
+├── scripts/
+│   └── generate_stadiums_seed.py  ✅ Done — geocodes stadiums via Nominatim → stadiums.csv
+│
+├── dags/
+│   └── football_pipeline.py    ⬜ Not started — Airflow DAG
+│
+├── dbt/
+│   ├── seeds/
+│   │   └── stadiums.csv        ✅ Done — 99 stadiums with GPS coordinates (dbt seed, Phase 4)
+│   └── models/
+│       ├── staging/            ⬜ Not started
+│       ├── intermediate/       ⬜ Not started
+│       └── marts/              ⬜ Not started
+│
+├── docker/
+│   ├── Dockerfile              ⬜ Not started
+│   └── docker-compose.yml      ⬜ Not started
+│
+├── tests/
+│   └── ...                     ⬜ Not started — pytest with mocks
+│
+├── configs/
+├── data/
+│   └── raw/
+│       └── api_football/       ✅ Local JSON files (pre-S3 upload)
+│
+├── requirements.txt
+├── .env
+└── README.md
 ```
 
 ---
 
 ## 🛠️ Tech Stack
 
-| Tool | Version | Purpose |
-|------|---------|---------|
-| ![Python](https://img.shields.io/badge/Python-3.8+-blue) | 3.8+ | Data ingestion & transformation |
-| ![Airflow](https://img.shields.io/badge/Airflow-2.0+-green) | 2.0+ | Pipeline orchestration |
-| ![AWS S3](https://img.shields.io/badge/AWS-S3-orange) | - | Raw data storage (Bronze) |
-| ![Snowflake](https://img.shields.io/badge/Snowflake-❄️-lightblue) | - | Data Warehouse (Silver) |
-| ![dbt](https://img.shields.io/badge/dbt-1.0+-orange) | 1.0+ | Data transformation (Gold) |
-| ![Docker](https://img.shields.io/badge/Docker-ready-blue) | - | Containerization |
-| ![pytest](https://img.shields.io/badge/pytest-✅-green) | - | Unit testing |
+| Tool | Purpose | Status |
+|------|---------|--------|
+| **Python 3.8+** | Data ingestion & transformation | ✅ In use |
+| **requests** | HTTP calls to REST APIs | ✅ In use |
+| **Pandas** | Data manipulation | ✅ In use |
+| **AWS S3** | Raw data storage — Bronze layer | ⬜ Phase 2 |
+| **Snowflake** | Data Warehouse — Silver layer | ⬜ Phase 3 |
+| **dbt** | Data transformations — Gold layer | ⬜ Phase 4 |
+| **Apache Airflow** | Pipeline orchestration & scheduling | ⬜ Phase 5 |
+| **Docker** | Containerization & reproducibility | ⬜ Phase 6 |
+| **pytest** | Unit testing with mocks | ⬜ Phase 7 |
 
 ---
 
-## 📊 Data Sources
+## 📐 Key Architecture Decisions
 
-| Source | Type | Data |
-|--------|------|------|
-| [API-Football](https://api-football.com) | REST API | Match results, standings, player stats |
-| [OpenWeather](https://openweathermap.org) | REST API | Weather conditions at match locations |
-| [Kaggle](https://kaggle.com) | CSV | Historical football data |
+| Decision | Rationale |
+|----------|-----------|
+| `SEASONS = [2022]` in Phase 1 | Validate the architecture on one season first; extend to `[2022, 2023, 2024]` after — the code already supports it with a single config change |
+| One function per API endpoint | Single Responsibility Principle — each function is independently readable and testable |
+| Generic `_call_api()` internal function | DRY principle — all HTTP logic (retry, timeout, error handling) centralized in one place |
+| Local JSON save before S3 upload | Never lose already-fetched data if a later step fails — save immediately after each extraction |
+| `logging` instead of `print()` | Airflow captures Python `logging` natively — using `print()` would make logs invisible once orchestrated |
+| Docker in Phase 6, not Phase 1 | Validate the code locally first, containerize once it works — avoids debugging two layers at once |
+| Open-Meteo instead of OpenWeather | OpenWeather free tier has no historical data access. Open-Meteo provides free historical weather since 1940, open-source, no API key required |
+| Stadium coordinates as a dbt seed | GPS coordinates are reference data, not operational data — they belong in `dbt/seeds/stadiums.csv`, versioned in Git and loaded into Snowflake via `dbt seed`. Generated once via `scripts/generate_stadiums_seed.py` using Nominatim, updated only when new teams appear |
 
 ---
 
-## 📈 Analytics Insights
+## 📊 Planned Analytics Insights
 
 ```mermaid
 mindmap
@@ -223,37 +298,40 @@ mindmap
     🏠 Team Performance
       Home vs Away win rates
       Goals scored per league
-      Performance trends
+      Performance trends across seasons
     👟 Player Rankings
       Top scorers per league
       Top assisters per league
-      Player consistency
+      Player consistency over seasons
     🌧️ Weather Impact
       Rain vs Clear conditions
-      Temperature effect
-      Match outcomes by weather
+      Temperature effect on goals scored
+      Match outcomes by weather type
     📊 League Analysis
       Most competitive league
       Average goals per match
-      Season comparisons
+      Season-over-season comparisons
 ```
 
 ---
 
 ## 🚀 Getting Started
 
+> ⚠️ **The project is in Phase 1.** Only local ingestion is functional at this stage.
+> Docker, Airflow, and Snowflake setup are planned for later phases.
+
 ### Prerequisites
 
 - Python 3.8+
-- Docker Desktop
-- AWS Account (Free Tier)
-- Snowflake Account
+- API-Football account (free tier — 100 requests/day)
+- AWS account (for Phase 2)
+- Snowflake account (for Phase 3)
 
 ### Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/ton-username/European-Football.git
+git clone https://github.com/Elie-dev25/European-Football.git
 cd European-Football
 
 # Install dependencies
@@ -262,9 +340,21 @@ pip install -r requirements.txt
 # Configure environment variables
 cp .env.example .env
 # Edit .env with your API keys and credentials
+```
 
-# Start with Docker
-docker-compose up -d
+### Run the ingestion (Phase 1 — current)
+
+```bash
+# Extract data from API-Football for season 2022
+python pipelines/api_football/extract.py
+```
+
+Raw data will be saved to `data/raw/api_football/` as JSON files.
+
+```bash
+# Generate the stadiums reference seed (one-shot, run once per new season)
+# Reads fixtures JSON → geocodes stadiums via Nominatim → saves dbt/seeds/stadiums.csv
+python scripts/generate_stadiums_seed.py
 ```
 
 ---
@@ -281,4 +371,4 @@ Software & Data Engineer
 
 ---
 
-*🚧 Project currently in progress — Star ⭐ this repo to follow the progress!*
+*🚧 Project actively in progress — Star ⭐ this repo to follow the build!*
