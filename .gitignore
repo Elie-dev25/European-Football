@@ -1,6 +1,11 @@
 .env
 logs/
 data/
+venv/
+notes/
+get-pip.py
+simple_test.py
+*.py.bak
 __pycache__/
 *.pyc
 .DS_Store
