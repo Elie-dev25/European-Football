@@ -1,4 +1,6 @@
-# 🏆 European Football Analytics Platform
+# 🏆 European Football Analytics Platform 
+
+> **🚧 UNDER ACTIVE DEVELOPMENT ON BRANCH `develop` 🚧** 
 
 An end-to-end data engineering pipeline that collects, transforms, and analyzes
 football data from the 5 major European leagues using a modern data stack.
