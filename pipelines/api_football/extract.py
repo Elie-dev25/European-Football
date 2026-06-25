@@ -5,7 +5,9 @@ import logging
 import requests
 import pandas as pd
 from pathlib import Path
-from dotenv import load_dotenv
+from dotenv import load_dotenv 
+from pipelines.utils import normalize_league_name, build_filepath, load_leagues
+
 
 # Configuration du logging — niveaux INFO/WARNING/ERROR avec horodatage
 logging.basicConfig(
@@ -40,27 +42,6 @@ SEASONS = [2022]
 
 # Phase 2 - Extension une fois l'architecture validée
 # SEASONS = [2022, 2023, 2024]
-
-
-# === Chargement des ligues depuis le seed dbt ===
-
-def load_leagues(leagues_csv: Path) -> dict:
-    """
-    Charge les ligues cibles depuis dbt/seeds/leagues.csv.
-    Retourne un dict {league_name: league_id} — même structure
-    que l'ancien LEAGUE_IDS hardcodé, mais lu depuis le CSV.
-
-    Ajouter une nouvelle ligue = ajouter une ligne dans leagues.csv,
-    sans toucher au code.
-    """
-    if not leagues_csv.exists():
-        logger.error(f"Fichier leagues.csv introuvable : {leagues_csv}")
-        raise FileNotFoundError(f"{leagues_csv} introuvable — vérifie que dbt/seeds/leagues.csv existe")
-
-    df = pd.read_csv(leagues_csv)
-    leagues = dict(zip(df["league_name"], df["league_id"]))
-    logger.info(f"{len(leagues)} ligue(s) chargée(s) depuis {leagues_csv} : {list(leagues.keys())}")
-    return leagues
 
 
 # === Couche d'appel API générique ===
@@ -153,8 +134,7 @@ def _file_exists(league_name: str, season: int, data_type: str, output_dir: Path
     - Reprendre un run interrompu sans repartir de zéro
     - Ajouter une nouvelle saison sans re-télécharger les saisons existantes
     """
-    safe_name = league_name.lower().replace(" ", "_")
-    filepath = output_dir / f"{safe_name}_{season}_{data_type}.json"
+    filepath = build_filepath(output_dir, league_name, season, data_type)
     return filepath.exists()
 
 
@@ -181,8 +161,7 @@ def extract_league_data(league_name: str, league_id: int, season: int, output_di
         if _file_exists(league_name, season, data_type, output_dir):
             # Fichier déjà présent — on charge depuis le disque, pas depuis l'API
             logger.info(f"Déjà téléchargé — {league_name} {season} {data_type} ignoré (0 requête consommée)")
-            safe_name = league_name.lower().replace(" ", "_")
-            filepath = output_dir / f"{safe_name}_{season}_{data_type}.json"
+            filepath = build_filepath(output_dir, league_name, season, data_type)
             with open(filepath, "r", encoding="utf-8") as f:
                 data[data_type] = json.load(f)
         else:
@@ -224,10 +203,8 @@ def save_raw_data(all_data: dict, season: int, output_dir: Path) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     for league_name, league_data in all_data.items():
-        safe_name = league_name.lower().replace(" ", "_")
-
         for data_type, content in league_data.items():
-            filepath = output_dir / f"{safe_name}_{season}_{data_type}.json"
+            filepath = build_filepath(output_dir, league_name, season, data_type)
 
             if filepath.exists():
                 # Déjà présent — on ne réécrit pas, cohérence avec l'idempotence
