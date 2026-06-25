@@ -18,9 +18,12 @@ Bayern Munich,Allianz Arena,München,48.2187901,11.6236227
 Bologna,Stadio Renato Dall'Ara,Bologna,44.492317,11.3099971
 Borussia Dortmund,SIGNAL IDUNA PARK,Dortmund,51.4924922,7.4518549
 Borussia Monchengladbach,Stadion im BORUSSIA-PARK,Mönchengladbach,51.1746249,6.3854094
-"Bournemouth,Vitality Stadium,""Bournemouth, Dorset"",50.728828,-1.901856"
-"Brentford,Gtech Community Stadium,""Brentford, Middlesex"",51.472865,-0.3243682"
-"Brighton,The American Express Community Stadium,""Falmer, East Sussex"",50.8687985,-0.0688139"
+Bournemouth,Vitality Stadium,"Bournemouth, Dorset",50.728828,-1.901856
+"Bournemouth,Vitality Stadium,""Bournemouth, Dorset"",50.728828,-1.901856",,,,
+Brentford,Gtech Community Stadium,"Brentford, Middlesex",51.475272,-0.3262143
+"Brentford,Gtech Community Stadium,""Brentford, Middlesex"",51.472865,-0.3243682",,,,
+Brighton,The American Express Community Stadium,"Falmer, East Sussex",50.8687985,-0.0688139
+"Brighton,The American Express Community Stadium,""Falmer, East Sussex"",50.8687985,-0.0688139",,,,
 Cadiz,Estadio Nuevo Mirandilla,Cádiz,36.5026039,-6.2730167
 Celta Vigo,Abanca-Balaídos,Vigo,42.2117659,-8.7396656
 Chelsea,Stamford Bridge,London,51.4816869,-0.1910336
@@ -47,8 +50,10 @@ Inter,Stadio Giuseppe Meazza,Milano,45.4782003,9.123964
 Juventus,Allianz Stadium,Torino,45.1095759,7.6421338
 Lazio,Stadio Olimpico,Roma,41.9387659,12.458134
 Lecce,Stadio Comunale Via del Mare,Lecce,40.1522173,18.2260628
-"Leeds,Elland Road,""Leeds, West Yorkshire"",53.7747482,-1.5761836"
-"Leicester,King Power Stadium,""Leicester, Leicestershire"",52.6849138,-1.1847653"
+Leeds,Elland Road,"Leeds, West Yorkshire",53.7751735,-1.5751916
+"Leeds,Elland Road,""Leeds, West Yorkshire"",53.7747482,-1.5761836",,,,
+Leicester,King Power Stadium,"Leicester, Leicestershire",52.6849138,-1.1847653
+"Leicester,King Power Stadium,""Leicester, Leicestershire"",52.6849138,-1.1847653",,,,
 Lens,Stade Bollaert-Delelis,Lens,50.4328242,2.8149863
 Lille,Stade Pierre-Mauroy,Villeneuve d'Ascq,50.6119044,3.130508
 Liverpool,Anfield,Liverpool,53.4309011,-2.9609719
@@ -65,7 +70,8 @@ Nantes,Stade de la Beaujoire - Louis Fonteneau,Nantes,47.256005,-1.5247552
 Napoli,Stadio Diego Armando Maradona,Napoli,40.8279773,14.192889
 Newcastle,St. James' Park,Newcastle upon Tyne,54.9754693,-1.6218737
 Nice,Allianz Riviera,Nice,43.7051477,7.1926033
-"Nottingham Forest,The City Ground,""Nottingham, Nottinghamshire"",52.9399387,-1.1328954"
+Nottingham Forest,The City Ground,"Nottingham, Nottinghamshire",52.9399387,-1.1328954
+"Nottingham Forest,The City Ground,""Nottingham, Nottinghamshire"",52.9399387,-1.1328954",,,,
 Osasuna,Estadio El Sadar,Iruñea,42.7966625,-1.6371311
 Paris Saint Germain,Parc des Princes,Paris,48.8413634,2.2530693
 RB Leipzig,Red Bull Arena,Leipzig,51.3457078,12.3482361
@@ -80,6 +86,7 @@ Salernitana,Stadio Arechi,Salerno,40.6455616,14.8235898
 Sampdoria,Stadio Comunale Luigi Ferraris,Genova,44.4164753,8.9525341
 Sassuolo,MAPEI Stadium - Città del Tricolore,Reggio nell'Emilia,44.7145456,10.6497308
 Sevilla,Estadio Ramón Sánchez Pizjuán,Sevilla,37.3840876,-5.9706309
+Southampton,St. Mary's Stadium,"Southampton, Hampshire",50.9085,-1.4042
 Southampton FC,St. Mary's Stadium,Southampton,50.9058,-1.3914
 Spezia,Stadio Alberto Picco,La Spezia,44.1021153,9.8093242
 Stade Brestois 29,Stade Francis-Le Blé,Brest,48.4030423,-4.4613605
@@ -97,4 +104,5 @@ Vfl Bochum,Vonovia Ruhrstadion,Bochum,51.4900826,7.2365091
 Villarreal,Estadio Ciudad de Valencia,Valencia,39.4946425,-0.3638622
 Werder Bremen,wohninvest WESERSTADION,Bremen,53.0758196,8.8071646
 West Ham,London Stadium,London,51.5386207,-0.0166238
-"Wolves,Molineux Stadium,""Wolverhampton, West Midlands"",52.5902723,-2.1304079"
+Wolves,Molineux Stadium,"Wolverhampton, West Midlands",52.5902723,-2.1304079
+"Wolves,Molineux Stadium,""Wolverhampton, West Midlands"",52.5902723,-2.1304079",,,,

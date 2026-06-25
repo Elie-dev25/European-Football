@@ -1,4 +1,5 @@
 import json
+import time
 import logging
 import requests
 import pandas as pd
@@ -73,7 +74,7 @@ def get_stadium_coords(team_name: str, stadiums_df: pd.DataFrame) -> tuple:
 # Appel API Open-Meteo
 # =============================================================================
 
-def _call_api(params: dict, retries: int = 3) -> dict:
+def _call_api(params: dict, retries: int = 8) -> dict:
     """
     Fonction interne qui gère l'appel HTTP brut vers Open-Meteo Archive API.
     Toutes les fonctions get_xxx() passent par ici pour bénéficier d'une
@@ -81,6 +82,8 @@ def _call_api(params: dict, retries: int = 3) -> dict:
 
     Pas de retry sur 429 : Open-Meteo n'a pas de rate limiting.
     Pas de HEADERS : pas de clé API requise.
+    Retry sur Timeout et ConnectionError avec backoff exponentiel —
+    adapté aux connexions instables.
     """
     for attempt in range(retries):
         try:
@@ -95,14 +98,12 @@ def _call_api(params: dict, retries: int = 3) -> dict:
                 logger.error(f"Erreur HTTP {response.status_code} pour params={params}")
                 return {}
 
-        except requests.exceptions.Timeout:
-            # Timeout réseau — on retente
-            logger.warning(f"Timeout (tentative {attempt + 1}/{retries}), nouvelle tentative...")
-
-        except requests.exceptions.ConnectionError:
-            # Pas de connexion réseau — inutile de retenter
-            logger.error("Connexion impossible — vérifie ta connexion internet")
-            return {}
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+            # Erreur réseau temporaire — on retente avec backoff exponentiel
+            # 2^attempt : 1s, 2s, 4s, 8s, 16s entre les tentatives
+            wait = 2 ** attempt
+            logger.warning(f"Erreur réseau (tentative {attempt + 1}/{retries}) : {e} — nouvelle tentative dans {wait}s...")
+            time.sleep(wait)
 
         except requests.exceptions.RequestException as e:
             logger.error(f"Erreur réseau inattendue : {e}")
@@ -114,7 +115,6 @@ def _call_api(params: dict, retries: int = 3) -> dict:
 
     logger.error(f"Échec définitif après {retries} tentatives")
     return {}
-
 
 def get_weather_for_day(latitude: float, longitude: float, date: str) -> dict:
     """
