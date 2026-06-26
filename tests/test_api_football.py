@@ -6,6 +6,7 @@ time.sleep est mocke pour ne jamais ralentir la suite de tests.
 """
 
 import json
+import requests
 import pytest
 from pathlib import Path
 from unittest.mock import patch, Mock
@@ -77,7 +78,6 @@ class TestCallApi:
     @patch("pipelines.api_football.extract.time.sleep")
     @patch("pipelines.api_football.extract.requests.get")
     def test_timeout_then_success(self, mock_get, mock_sleep):
-        import requests
         success = Mock(status_code=200)
         success.json.return_value = {"response": ["data"]}
         mock_get.side_effect = [requests.exceptions.Timeout(), success]
@@ -88,19 +88,32 @@ class TestCallApi:
         mock_sleep.assert_called_once_with(10)
         assert mock_get.call_count == 2
 
+    @patch("pipelines.api_football.extract.time.sleep")
     @patch("pipelines.api_football.extract.requests.get")
-    def test_connection_error_returns_empty_dict_immediately(self, mock_get):
-        import requests
+    def test_connection_error_now_retries_like_timeout(self, mock_get, mock_sleep):
+        success = Mock(status_code=200)
+        success.json.return_value = {"response": ["data"]}
+        mock_get.side_effect = [requests.exceptions.ConnectionError(), success]
+
+        result = _call_api("standings", {"league": 39, "season": 2022}, retries=4)
+
+        assert result == {"response": ["data"]}
+        mock_sleep.assert_called_once_with(10)
+        assert mock_get.call_count == 2
+
+    @patch("pipelines.api_football.extract.time.sleep")
+    @patch("pipelines.api_football.extract.requests.get")
+    def test_connection_error_exhausts_retries_if_persistent(self, mock_get, mock_sleep):
         mock_get.side_effect = requests.exceptions.ConnectionError()
 
-        result = _call_api("standings", {"league": 39, "season": 2022}, retries=3)
+        result = _call_api("standings", {"league": 39, "season": 2022}, retries=4)
 
         assert result == {}
-        mock_get.assert_called_once()
+        assert mock_get.call_count == 4
+        assert mock_sleep.call_count == 4
 
     @patch("pipelines.api_football.extract.requests.get")
     def test_generic_request_exception_returns_empty_dict(self, mock_get):
-        import requests
         mock_get.side_effect = requests.exceptions.RequestException("erreur reseau")
 
         result = _call_api("standings", {"league": 39, "season": 2022})
@@ -110,7 +123,6 @@ class TestCallApi:
     @patch("pipelines.api_football.extract.time.sleep")
     @patch("pipelines.api_football.extract.requests.get")
     def test_exhausts_all_retries_on_repeated_timeout(self, mock_get, mock_sleep):
-        import requests
         mock_get.side_effect = requests.exceptions.Timeout()
 
         result = _call_api("standings", {"league": 39, "season": 2022}, retries=3)
