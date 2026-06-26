@@ -89,16 +89,16 @@ class TestLoadLeagues:
     def test_loads_valid_csv(self, tmp_path):
         csv_path = tmp_path / "leagues.csv"
         csv_path.write_text(
-            "league_name,league_id,country\n"
-            "Premier League,39,England\n"
-            "Ligue 1,61,France\n"
+            "league_name,league_id,country,kaggle_league_id\n"
+            "Premier League,39,England,1729\n"
+            "Ligue 1,61,France,4769\n"
         )
         result = load_leagues(csv_path)
         assert result == {"Premier League": 39, "Ligue 1": 61}
 
     def test_returns_dict_type(self, tmp_path):
         csv_path = tmp_path / "leagues.csv"
-        csv_path.write_text("league_name,league_id,country\nSerie A,135,Italy\n")
+        csv_path.write_text("league_name,league_id,country,kaggle_league_id\nSerie A,135,Italy,10257\n")
         result = load_leagues(csv_path)
         assert isinstance(result, dict)
 
@@ -114,35 +114,52 @@ class TestLoadLeagues:
 
     def test_single_league(self, tmp_path):
         csv_path = tmp_path / "leagues.csv"
-        csv_path.write_text("league_name,league_id,country\nBundesliga,78,Germany\n")
+        csv_path.write_text("league_name,league_id,country,kaggle_league_id\nBundesliga,78,Germany,7809\n")
         result = load_leagues(csv_path)
         assert result == {"Bundesliga": 78}
 
     def test_all_five_leagues(self, tmp_path):
         csv_path = tmp_path / "leagues.csv"
         csv_path.write_text(
-            "league_name,league_id,country\n"
-            "Premier League,39,England\n"
-            "Ligue 1,61,France\n"
-            "Bundesliga,78,Germany\n"
-            "Serie A,135,Italy\n"
-            "La Liga,140,Spain\n"
+            "league_name,league_id,country,kaggle_league_id\n"
+            "Premier League,39,England,1729\n"
+            "Ligue 1,61,France,4769\n"
+            "Bundesliga,78,Germany,7809\n"
+            "Serie A,135,Italy,10257\n"
+            "La Liga,140,Spain,21518\n"
         )
         result = load_leagues(csv_path)
         assert len(result) == 5
         assert result["La Liga"] == 140
 
     def test_duplicate_league_name_last_wins(self, tmp_path):
-        # Verrouille le comportement actuel de dict(zip(...)) :
-        # en cas de doublon, la dernière valeur l'emporte silencieusement.
         csv_path = tmp_path / "leagues.csv"
         csv_path.write_text(
-            "league_name,league_id,country\n"
-            "Premier League,39,England\n"
-            "Premier League,999,England\n"
+            "league_name,league_id,country,kaggle_league_id\n"
+            "Premier League,39,England,1729\n"
+            "Premier League,999,England,9999\n"
         )
         result = load_leagues(csv_path)
         assert result["Premier League"] == 999
+
+    def test_default_id_column_is_league_id(self, tmp_path):
+        csv_path = tmp_path / "leagues.csv"
+        csv_path.write_text(
+            "league_name,league_id,country,kaggle_league_id\n"
+            "Premier League,39,England,1729\n"
+        )
+        result = load_leagues(csv_path)
+        assert result == {"Premier League": 39}
+
+    def test_loads_kaggle_id_column(self, tmp_path):
+        csv_path = tmp_path / "leagues.csv"
+        csv_path.write_text(
+            "league_name,league_id,country,kaggle_league_id\n"
+            "Premier League,39,England,1729\n"
+            "Ligue 1,61,France,4769\n"
+        )
+        result = load_leagues(csv_path, id_column="kaggle_league_id")
+        assert result == {"Premier League": 1729, "Ligue 1": 4769}
 
 
 # =============================================================================

@@ -46,7 +46,7 @@ SEASONS = [2022]
 
 # === Couche d'appel API générique ===
 
-def _call_api(endpoint: str, params: dict, retries: int = 3) -> dict:
+def _call_api(endpoint: str, params: dict, retries: int = 4) -> dict:
     """
     Fonction interne qui gère l'appel HTTP brut vers n'importe quel endpoint d'API-Football.
     Toutes les fonctions get_xxx() passent par ici (principe DRY).
@@ -78,13 +78,9 @@ def _call_api(endpoint: str, params: dict, retries: int = 3) -> dict:
                 logger.error(f"Erreur HTTP {response.status_code} pour {endpoint} avec params={params}")
                 return {}
 
-        except requests.exceptions.Timeout:
-            logger.warning(f"Timeout pour {endpoint} (tentative {attempt + 1}/{retries}), nouvelle tentative...")
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+            logger.warning(f"Erreur réseau pour {endpoint} (tentative {attempt + 1}/{retries}) : {e}, nouvelle tentative...")
             time.sleep(10)
-
-        except requests.exceptions.ConnectionError:
-            logger.error(f"Connexion impossible pour {endpoint} — vérifie ta connexion internet")
-            return {}
 
         except requests.exceptions.RequestException as e:
             logger.error(f"Erreur réseau inattendue pour {endpoint} : {e}")
@@ -159,13 +155,15 @@ def extract_league_data(league_name: str, league_id: int, season: int, output_di
     data = {}
     for data_type in data_types:
         if _file_exists(league_name, season, data_type, output_dir):
-            # Fichier déjà présent — on charge depuis le disque, pas depuis l'API
-            logger.info(f"Déjà téléchargé — {league_name} {season} {data_type} ignoré (0 requête consommée)")
             filepath = build_filepath(output_dir, league_name, season, data_type)
-            with open(filepath, "r", encoding="utf-8") as f:
-                data[data_type] = json.load(f)
+            try:
+                with open(filepath, "r", encoding="utf-8") as f:
+                    data[data_type] = json.load(f)
+                logger.info(f"Déjà téléchargé — {league_name} {season} {data_type} ignoré (0 requête consommée)")
+            except (json.JSONDecodeError, OSError) as e:
+                logger.error(f"Fichier {filepath} corrompu ou illisible ({e}) — re-téléchargement depuis l'API")
+                data[data_type] = getters[data_type]()
         else:
-            # Fichier absent — on appelle l'API
             data[data_type] = getters[data_type]()
 
     logger.info(f"Terminé pour {league_name}, saison {season}")
@@ -181,10 +179,12 @@ def extract_all_leagues(season: int, leagues: dict, output_dir: Path) -> dict:
     où chaque valeur a la même structure que extract_league_data().
     """
     all_data = {}
-
     for league_name, league_id in leagues.items():
-        all_data[league_name] = extract_league_data(league_name, league_id, season, output_dir)
-
+        try:
+            all_data[league_name] = extract_league_data(league_name, league_id, season, output_dir)
+        except Exception as e:
+            logger.error(f"Échec extraction {league_name} {season} : {e}")
+            all_data[league_name] = {}
     return all_data
 
 
@@ -243,19 +243,21 @@ def run_pipeline(seasons: list) -> None:
     en changeant UNE seule ligne de configuration — aucune fonction ici n'a besoin d'être modifiée.
     """
     # Chargement des ligues depuis le seed dbt — une seule fois pour tout le pipeline
-    leagues = load_leagues(LEAGUES_CSV)
+    leagues = load_leagues(LEAGUES_CSV, id_column="league_id")
 
     logger.info(f"Démarrage du pipeline pour les saisons : {seasons}")
 
     for season in seasons:
-        logger.info(f"=== Saison {season} ===")
-        all_data = extract_and_save_season(season, leagues, OUTPUT_DIR)
+        logger.info(f"=== Saison {season} ===") 
+        try:
+            all_data = extract_and_save_season(season, leagues, OUTPUT_DIR)
 
         # Résumé par saison pour vérifier visuellement la cohérence des données récupérées
-        for league_name, data in all_data.items():
-            nb_fixtures = len(data["fixtures"].get("response", []))
-            logger.info(f"{league_name}: {nb_fixtures} matchs")
-
+            for league_name, data in all_data.items():
+                nb_fixtures = len(data.get("fixtures", {}).get("response", []))
+                logger.info(f"{league_name}: {nb_fixtures} matchs")
+        except Exception as e:
+            logger.error(f"Échec saison {season} : {e} — on continue avec les autres saisons")
     logger.info("Pipeline terminé.")
 
 

@@ -1,6 +1,6 @@
-league_name,league_id,country
-Premier League,39,England
-Ligue 1,61,France
-Bundesliga,78,Germany
-Serie A,135,Italy
-La Liga,140,Spain
+league_name,league_id,country,kaggle_league_id
+Premier League,39,England,1729
+Ligue 1,61,France,4769
+Bundesliga,78,Germany,7809
+Serie A,135,Italy,10257
+La Liga,140,Spain,21518

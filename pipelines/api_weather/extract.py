@@ -383,7 +383,7 @@ def run_pipeline(seasons: list = SEASONS) -> None:
 
     # Chargement des référentiels — bloquant si absents
     stadiums_df = load_stadiums(STADIUMS_CSV)
-    leagues = list(load_leagues(LEAGUES_CSV).keys())
+    leagues = list(load_leagues(LEAGUES_CSV, id_column="league_id").keys())
 
     for season in seasons:
         logger.info(f"--- Saison {season} ---")

@@ -39,13 +39,14 @@ def build_filepath(base_dir: Path, league_name: str, season: int, data_type: str
 # Chargement des référentiels
 # =============================================================================
 
-def load_leagues(leagues_csv: Path) -> dict:
+def load_leagues(leagues_csv: Path, id_column: str = "league_id") -> dict:
     """
     Charge les ligues cibles depuis dbt/seeds/leagues.csv.
-    Retourne un dict {league_name: league_id}.
+    Retourne un dict {league_name: id} où id est la colonne spécifiée par id_column.
 
-    api_football utilise le dict complet (league_id requis pour les appels API).
-    api_weather n'a besoin que des noms : list(load_leagues(...).keys()).
+    Exemples :
+    - load_leagues(csv) → {league_name: league_id}  (API-Football)
+    - load_leagues(csv, id_column="kaggle_league_id") → {league_name: kaggle_league_id}
 
     Lève FileNotFoundError si le CSV est absent — erreur bloquante intentionnelle :
     sans ce référentiel, aucun pipeline ne peut démarrer.
@@ -56,10 +57,9 @@ def load_leagues(leagues_csv: Path) -> dict:
         )
 
     df = pd.read_csv(leagues_csv)
-    leagues = dict(zip(df["league_name"], df["league_id"]))
+    leagues = dict(zip(df["league_name"], df[id_column]))
     logger.info(f"{len(leagues)} ligue(s) chargée(s) depuis {leagues_csv} : {list(leagues.keys())}")
     return leagues
-
 
 def load_stadiums(stadiums_csv: Path) -> pd.DataFrame:
     """
