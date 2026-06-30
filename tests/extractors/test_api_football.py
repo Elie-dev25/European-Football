@@ -11,7 +11,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import patch, Mock
 
-from pipelines.api_football.extract import (
+from pipelines.extractors.api_football.extract import (
     _call_api,
     get_standings,
     get_fixtures,
@@ -28,7 +28,7 @@ from pipelines.api_football.extract import (
 
 class TestCallApi:
 
-    @patch("pipelines.api_football.extract.requests.get")
+    @patch("pipelines.extractors.api_football.extract.requests.get")
     def test_success_200_returns_json(self, mock_get):
         mock_response = Mock(status_code=200)
         mock_response.json.return_value = {"response": ["data"]}
@@ -39,7 +39,7 @@ class TestCallApi:
         assert result == {"response": ["data"]}
         mock_get.assert_called_once()
 
-    @patch("pipelines.api_football.extract.requests.get")
+    @patch("pipelines.extractors.api_football.extract.requests.get")
     def test_404_or_500_returns_empty_dict_no_retry(self, mock_get):
         mock_response = Mock(status_code=500)
         mock_get.return_value = mock_response
@@ -49,8 +49,8 @@ class TestCallApi:
         assert result == {}
         mock_get.assert_called_once()
 
-    @patch("pipelines.api_football.extract.time.sleep")
-    @patch("pipelines.api_football.extract.requests.get")
+    @patch("pipelines.extractors.api_football.extract.time.sleep")
+    @patch("pipelines.extractors.api_football.extract.requests.get")
     def test_429_retries_with_retry_after_header(self, mock_get, mock_sleep):
         rate_limited = Mock(status_code=429, headers={"Retry-After": "5"})
         success = Mock(status_code=200)
@@ -63,8 +63,8 @@ class TestCallApi:
         mock_sleep.assert_called_once_with(5)
         assert mock_get.call_count == 2
 
-    @patch("pipelines.api_football.extract.time.sleep")
-    @patch("pipelines.api_football.extract.requests.get")
+    @patch("pipelines.extractors.api_football.extract.time.sleep")
+    @patch("pipelines.extractors.api_football.extract.requests.get")
     def test_429_without_retry_after_header_defaults_to_60s(self, mock_get, mock_sleep):
         rate_limited = Mock(status_code=429, headers={})
         success = Mock(status_code=200)
@@ -75,8 +75,8 @@ class TestCallApi:
 
         mock_sleep.assert_called_once_with(60)
 
-    @patch("pipelines.api_football.extract.time.sleep")
-    @patch("pipelines.api_football.extract.requests.get")
+    @patch("pipelines.extractors.api_football.extract.time.sleep")
+    @patch("pipelines.extractors.api_football.extract.requests.get")
     def test_timeout_then_success(self, mock_get, mock_sleep):
         success = Mock(status_code=200)
         success.json.return_value = {"response": ["data"]}
@@ -88,8 +88,8 @@ class TestCallApi:
         mock_sleep.assert_called_once_with(10)
         assert mock_get.call_count == 2
 
-    @patch("pipelines.api_football.extract.time.sleep")
-    @patch("pipelines.api_football.extract.requests.get")
+    @patch("pipelines.extractors.api_football.extract.time.sleep")
+    @patch("pipelines.extractors.api_football.extract.requests.get")
     def test_connection_error_now_retries_like_timeout(self, mock_get, mock_sleep):
         success = Mock(status_code=200)
         success.json.return_value = {"response": ["data"]}
@@ -101,8 +101,8 @@ class TestCallApi:
         mock_sleep.assert_called_once_with(10)
         assert mock_get.call_count == 2
 
-    @patch("pipelines.api_football.extract.time.sleep")
-    @patch("pipelines.api_football.extract.requests.get")
+    @patch("pipelines.extractors.api_football.extract.time.sleep")
+    @patch("pipelines.extractors.api_football.extract.requests.get")
     def test_connection_error_exhausts_retries_if_persistent(self, mock_get, mock_sleep):
         mock_get.side_effect = requests.exceptions.ConnectionError()
 
@@ -112,7 +112,7 @@ class TestCallApi:
         assert mock_get.call_count == 4
         assert mock_sleep.call_count == 4
 
-    @patch("pipelines.api_football.extract.requests.get")
+    @patch("pipelines.extractors.api_football.extract.requests.get")
     def test_generic_request_exception_returns_empty_dict(self, mock_get):
         mock_get.side_effect = requests.exceptions.RequestException("erreur reseau")
 
@@ -120,8 +120,8 @@ class TestCallApi:
 
         assert result == {}
 
-    @patch("pipelines.api_football.extract.time.sleep")
-    @patch("pipelines.api_football.extract.requests.get")
+    @patch("pipelines.extractors.api_football.extract.time.sleep")
+    @patch("pipelines.extractors.api_football.extract.requests.get")
     def test_exhausts_all_retries_on_repeated_timeout(self, mock_get, mock_sleep):
         mock_get.side_effect = requests.exceptions.Timeout()
 
@@ -131,7 +131,7 @@ class TestCallApi:
         assert mock_get.call_count == 3
         assert mock_sleep.call_count == 3
 
-    @patch("pipelines.api_football.extract.requests.get")
+    @patch("pipelines.extractors.api_football.extract.requests.get")
     def test_passes_correct_url_and_params(self, mock_get):
         mock_response = Mock(status_code=200)
         mock_response.json.return_value = {}
@@ -148,7 +148,7 @@ class TestCallApi:
 
 class TestGetters:
 
-    @patch("pipelines.api_football.extract._call_api")
+    @patch("pipelines.extractors.api_football.extract._call_api")
     def test_get_standings_calls_correct_endpoint(self, mock_call_api):
         mock_call_api.return_value = {"response": ["standings_data"]}
 
@@ -157,7 +157,7 @@ class TestGetters:
         mock_call_api.assert_called_once_with("standings", {"league": 39, "season": 2022})
         assert result == {"response": ["standings_data"]}
 
-    @patch("pipelines.api_football.extract._call_api")
+    @patch("pipelines.extractors.api_football.extract._call_api")
     def test_get_fixtures_calls_correct_endpoint(self, mock_call_api):
         mock_call_api.return_value = {"response": ["fixtures_data"]}
 
@@ -166,12 +166,12 @@ class TestGetters:
         mock_call_api.assert_called_once_with("fixtures", {"league": 39, "season": 2022})
         assert result == {"response": ["fixtures_data"]}
 
-    @patch("pipelines.api_football.extract._call_api")
+    @patch("pipelines.extractors.api_football.extract._call_api")
     def test_get_top_scorers_calls_correct_endpoint(self, mock_call_api):
         get_top_scorers(39, 2022)
         mock_call_api.assert_called_once_with("players/topscorers", {"league": 39, "season": 2022})
 
-    @patch("pipelines.api_football.extract._call_api")
+    @patch("pipelines.extractors.api_football.extract._call_api")
     def test_get_top_assists_calls_correct_endpoint(self, mock_call_api):
         get_top_assists(39, 2022)
         mock_call_api.assert_called_once_with("players/topassists", {"league": 39, "season": 2022})
@@ -191,10 +191,10 @@ class TestFileExists:
 
 class TestExtractLeagueData:
 
-    @patch("pipelines.api_football.extract.get_top_assists")
-    @patch("pipelines.api_football.extract.get_top_scorers")
-    @patch("pipelines.api_football.extract.get_fixtures")
-    @patch("pipelines.api_football.extract.get_standings")
+    @patch("pipelines.extractors.api_football.extract.get_top_assists")
+    @patch("pipelines.extractors.api_football.extract.get_top_scorers")
+    @patch("pipelines.extractors.api_football.extract.get_fixtures")
+    @patch("pipelines.extractors.api_football.extract.get_standings")
     def test_calls_api_when_no_files_exist(
         self, mock_standings, mock_fixtures, mock_scorers, mock_assists, tmp_path
     ):
@@ -212,10 +212,10 @@ class TestExtractLeagueData:
         mock_standings.assert_called_once_with(39, 2022)
         mock_fixtures.assert_called_once_with(39, 2022)
 
-    @patch("pipelines.api_football.extract.get_top_assists")
-    @patch("pipelines.api_football.extract.get_top_scorers")
-    @patch("pipelines.api_football.extract.get_fixtures")
-    @patch("pipelines.api_football.extract.get_standings")
+    @patch("pipelines.extractors.api_football.extract.get_top_assists")
+    @patch("pipelines.extractors.api_football.extract.get_top_scorers")
+    @patch("pipelines.extractors.api_football.extract.get_fixtures")
+    @patch("pipelines.extractors.api_football.extract.get_standings")
     def test_skips_api_call_when_file_already_exists(
         self, mock_standings, mock_fixtures, mock_scorers, mock_assists, tmp_path
     ):
@@ -236,10 +236,10 @@ class TestExtractLeagueData:
             filepath = tmp_path / f"premier_league_2022_{data_type}.json"
             filepath.write_text(json.dumps({"response": [data_type]}))
 
-        with patch("pipelines.api_football.extract.get_standings") as mock_s, \
-             patch("pipelines.api_football.extract.get_fixtures") as mock_f, \
-             patch("pipelines.api_football.extract.get_top_scorers") as mock_sc, \
-             patch("pipelines.api_football.extract.get_top_assists") as mock_a:
+        with patch("pipelines.extractors.api_football.extract.get_standings") as mock_s, \
+             patch("pipelines.extractors.api_football.extract.get_fixtures") as mock_f, \
+             patch("pipelines.extractors.api_football.extract.get_top_scorers") as mock_sc, \
+             patch("pipelines.extractors.api_football.extract.get_top_assists") as mock_a:
 
             result = extract_league_data("Premier League", 39, 2022, tmp_path)
 
@@ -253,7 +253,7 @@ class TestExtractLeagueData:
 
 class TestExtractAllLeagues:
 
-    @patch("pipelines.api_football.extract.extract_league_data")
+    @patch("pipelines.extractors.api_football.extract.extract_league_data")
     def test_loops_over_all_leagues(self, mock_extract, tmp_path):
         mock_extract.side_effect = lambda league_name, league_id, season, output_dir: {
             "fixtures": {"response": [f"{league_name}_data"]}
@@ -267,7 +267,7 @@ class TestExtractAllLeagues:
         mock_extract.assert_any_call("Premier League", 39, 2022, tmp_path)
         mock_extract.assert_any_call("Ligue 1", 61, 2022, tmp_path)
 
-    @patch("pipelines.api_football.extract.extract_league_data")
+    @patch("pipelines.extractors.api_football.extract.extract_league_data")
     def test_empty_leagues_dict_returns_empty_result(self, mock_extract, tmp_path):
         result = extract_all_leagues(2022, {}, tmp_path)
 
@@ -336,8 +336,8 @@ class TestSaveRawData:
 
 class TestExtractAndSaveSeason:
 
-    @patch("pipelines.api_football.extract.save_raw_data")
-    @patch("pipelines.api_football.extract.extract_all_leagues")
+    @patch("pipelines.extractors.api_football.extract.save_raw_data")
+    @patch("pipelines.extractors.api_football.extract.extract_all_leagues")
     def test_calls_extract_then_save_in_order(self, mock_extract_all, mock_save, tmp_path):
         mock_extract_all.return_value = {"Premier League": {"fixtures": {"response": []}}}
         leagues = {"Premier League": 39}
@@ -353,8 +353,8 @@ class TestExtractAndSaveSeason:
 
 class TestRunPipeline:
 
-    @patch("pipelines.api_football.extract.extract_and_save_season")
-    @patch("pipelines.api_football.extract.load_leagues")
+    @patch("pipelines.extractors.api_football.extract.extract_and_save_season")
+    @patch("pipelines.extractors.api_football.extract.load_leagues")
     def test_runs_once_per_season(self, mock_load_leagues, mock_extract_and_save):
         mock_load_leagues.return_value = {"Premier League": 39}
         mock_extract_and_save.return_value = {
@@ -367,8 +367,8 @@ class TestRunPipeline:
         seasons_called = [c.args[0] for c in mock_extract_and_save.call_args_list]
         assert seasons_called == [2022, 2023]
 
-    @patch("pipelines.api_football.extract.extract_and_save_season")
-    @patch("pipelines.api_football.extract.load_leagues")
+    @patch("pipelines.extractors.api_football.extract.extract_and_save_season")
+    @patch("pipelines.extractors.api_football.extract.load_leagues")
     def test_loads_leagues_only_once(self, mock_load_leagues, mock_extract_and_save):
         mock_load_leagues.return_value = {"Premier League": 39, "Ligue 1": 61}
         mock_extract_and_save.return_value = {}
@@ -377,8 +377,8 @@ class TestRunPipeline:
 
         mock_load_leagues.assert_called_once()
 
-    @patch("pipelines.api_football.extract.extract_and_save_season")
-    @patch("pipelines.api_football.extract.load_leagues")
+    @patch("pipelines.extractors.api_football.extract.extract_and_save_season")
+    @patch("pipelines.extractors.api_football.extract.load_leagues")
     def test_single_season_pipeline(self, mock_load_leagues, mock_extract_and_save):
         mock_load_leagues.return_value = {"Premier League": 39}
         mock_extract_and_save.return_value = {
