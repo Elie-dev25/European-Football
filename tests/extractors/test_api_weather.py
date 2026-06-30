@@ -11,7 +11,7 @@ import pandas as pd
 from pathlib import Path
 from unittest.mock import patch, Mock
 
-from pipelines.api_weather.extract import (
+from pipelines.extractors.api_weather.extract import (
     get_stadium_coords,
     _call_api,
     get_weather_for_day,
@@ -24,7 +24,6 @@ from pipelines.api_weather.extract import (
     extract_and_save_season,
     run_pipeline,
 )
-
 
 def make_stadiums_df():
     return pd.DataFrame([
@@ -72,7 +71,7 @@ class TestGetStadiumCoords:
 
 class TestCallApi:
 
-    @patch("pipelines.api_weather.extract.requests.get")
+    @patch("pipelines.extractors.api_weather.extract.requests.get")
     def test_success_200_returns_json(self, mock_get):
         mock_response = Mock(status_code=200)
         mock_response.json.return_value = {"hourly": {"time": ["2022-08-06T14:00"]}}
@@ -83,7 +82,7 @@ class TestCallApi:
         assert result == {"hourly": {"time": ["2022-08-06T14:00"]}}
         mock_get.assert_called_once()
 
-    @patch("pipelines.api_weather.extract.requests.get")
+    @patch("pipelines.extractors.api_weather.extract.requests.get")
     def test_http_error_returns_empty_dict_no_retry(self, mock_get):
         mock_response = Mock(status_code=400)
         mock_get.return_value = mock_response
@@ -93,8 +92,8 @@ class TestCallApi:
         assert result == {}
         mock_get.assert_called_once()
 
-    @patch("pipelines.api_weather.extract.time.sleep")
-    @patch("pipelines.api_weather.extract.requests.get")
+    @patch("pipelines.extractors.api_weather.extract.time.sleep")
+    @patch("pipelines.extractors.api_weather.extract.requests.get")
     def test_timeout_then_success_uses_exponential_backoff(self, mock_get, mock_sleep):
         import requests
         success = Mock(status_code=200)
@@ -108,8 +107,8 @@ class TestCallApi:
         mock_sleep.assert_called_once_with(1)
         assert mock_get.call_count == 2
 
-    @patch("pipelines.api_weather.extract.time.sleep")
-    @patch("pipelines.api_weather.extract.requests.get")
+    @patch("pipelines.extractors.api_weather.extract.time.sleep")
+    @patch("pipelines.extractors.api_weather.extract.requests.get")
     def test_connection_error_retries_with_backoff(self, mock_get, mock_sleep):
         import requests
         success = Mock(status_code=200)
@@ -123,8 +122,8 @@ class TestCallApi:
         assert mock_sleep.call_args_list[1].args == (2,)   # 2**1
         assert mock_get.call_count == 3
 
-    @patch("pipelines.api_weather.extract.time.sleep")
-    @patch("pipelines.api_weather.extract.requests.get")
+    @patch("pipelines.extractors.api_weather.extract.time.sleep")
+    @patch("pipelines.extractors.api_weather.extract.requests.get")
     def test_exhausts_all_retries_with_growing_backoff(self, mock_get, mock_sleep):
         import requests
         mock_get.side_effect = requests.exceptions.Timeout()
@@ -136,7 +135,7 @@ class TestCallApi:
         waits = [c.args[0] for c in mock_sleep.call_args_list]
         assert waits == [1, 2, 4, 8]
 
-    @patch("pipelines.api_weather.extract.requests.get")
+    @patch("pipelines.extractors.api_weather.extract.requests.get")
     def test_generic_request_exception_returns_empty_dict(self, mock_get):
         import requests
         mock_get.side_effect = requests.exceptions.RequestException("erreur reseau")
@@ -145,7 +144,7 @@ class TestCallApi:
 
         assert result == {}
 
-    @patch("pipelines.api_weather.extract.requests.get")
+    @patch("pipelines.extractors.api_weather.extract.requests.get")
     def test_no_api_key_header_sent(self, mock_get):
         mock_response = Mock(status_code=200)
         mock_response.json.return_value = {}
@@ -159,7 +158,7 @@ class TestCallApi:
 
 class TestGetWeatherForDay:
 
-    @patch("pipelines.api_weather.extract._call_api")
+    @patch("pipelines.extractors.api_weather.extract._call_api")
     def test_builds_correct_params_with_one_day_window(self, mock_call_api):
         mock_call_api.return_value = {"hourly": {"time": []}}
 
@@ -173,7 +172,7 @@ class TestGetWeatherForDay:
         assert called_params["timezone"] == "UTC"
         assert "temperature_2m" in called_params["hourly"]
 
-    @patch("pipelines.api_weather.extract._call_api")
+    @patch("pipelines.extractors.api_weather.extract._call_api")
     def test_month_boundary_rollover(self, mock_call_api):
         mock_call_api.return_value = {"hourly": {"time": []}}
 
@@ -243,8 +242,8 @@ class TestFileExists:
 
 class TestExtractWeatherForLeague:
 
-    @patch("pipelines.api_weather.extract.reshape_hourly_data")
-    @patch("pipelines.api_weather.extract.get_weather_for_day")
+    @patch("pipelines.extractors.api_weather.extract.reshape_hourly_data")
+    @patch("pipelines.extractors.api_weather.extract.get_weather_for_day")
     def test_happy_path_single_match(self, mock_get_weather, mock_reshape, tmp_path):
         fixtures_file = tmp_path / "premier_league_2022_fixtures.json"
         fixtures_file.write_text(json.dumps({"response": [make_fixture(team_home="Arsenal")]}))
@@ -274,7 +273,7 @@ class TestExtractWeatherForLeague:
 
         assert result == []
 
-    @patch("pipelines.api_weather.extract.get_weather_for_day")
+    @patch("pipelines.extractors.api_weather.extract.get_weather_for_day")
     def test_match_skipped_when_no_weather_data(self, mock_get_weather, tmp_path):
         fixtures_file = tmp_path / "premier_league_2022_fixtures.json"
         fixtures_file.write_text(json.dumps({"response": [make_fixture(team_home="Arsenal")]}))
@@ -286,8 +285,8 @@ class TestExtractWeatherForLeague:
 
         assert result == []
 
-    @patch("pipelines.api_weather.extract.reshape_hourly_data")
-    @patch("pipelines.api_weather.extract.get_weather_for_day")
+    @patch("pipelines.extractors.api_weather.extract.reshape_hourly_data")
+    @patch("pipelines.extractors.api_weather.extract.get_weather_for_day")
     def test_mixed_matches_some_skipped_some_kept(self, mock_get_weather, mock_reshape, tmp_path):
         fixtures_file = tmp_path / "premier_league_2022_fixtures.json"
         fixtures_file.write_text(json.dumps({"response": [
@@ -307,7 +306,7 @@ class TestExtractWeatherForLeague:
 
 class TestExtractAllLeagues:
 
-    @patch("pipelines.api_weather.extract.extract_weather_for_league")
+    @patch("pipelines.extractors.api_weather.extract.extract_weather_for_league")
     def test_loops_over_all_leagues(self, mock_extract, tmp_path):
         mock_extract.side_effect = lambda league_name, season, stadiums_df, fixtures_dir: [
             {"fixture_id": 1, "team_home": league_name}
@@ -319,7 +318,7 @@ class TestExtractAllLeagues:
         assert set(result.keys()) == {"Premier League", "Ligue 1"}
         assert result["Premier League"][0]["team_home"] == "Premier League"
 
-    @patch("pipelines.api_weather.extract.extract_weather_for_league")
+    @patch("pipelines.extractors.api_weather.extract.extract_weather_for_league")
     def test_exception_on_one_league_does_not_block_others(self, mock_extract, tmp_path):
         def side_effect(league_name, season, stadiums_df, fixtures_dir):
             if league_name == "Premier League":
@@ -377,11 +376,11 @@ class TestSaveRawData:
 
 class TestExtractAndSaveSeason:
 
-    @patch("pipelines.api_weather.extract.save_raw_data")
-    @patch("pipelines.api_weather.extract.extract_weather_for_league")
+    @patch("pipelines.extractors.api_weather.extract.save_raw_data")
+    @patch("pipelines.extractors.api_weather.extract.extract_weather_for_league")
     def test_extracts_and_saves_each_league(self, mock_extract, mock_save, tmp_path):
         # _file_exists utilise build_filepath(OUTPUT_DIR, ...) -> on pointe OUTPUT_DIR vers tmp_path
-        with patch("pipelines.api_weather.extract.OUTPUT_DIR", tmp_path):
+        with patch("pipelines.extractors.api_weather.extract.OUTPUT_DIR", tmp_path):
             mock_extract.return_value = [{"fixture_id": 1}]
             df = make_stadiums_df()
 
@@ -395,8 +394,8 @@ class TestExtractAndSaveSeason:
         existing = tmp_path / "premier_league_2022_weather.json"
         existing.write_text("[]")
 
-        with patch("pipelines.api_weather.extract.OUTPUT_DIR", tmp_path), \
-             patch("pipelines.api_weather.extract.extract_weather_for_league") as mock_extract:
+        with patch("pipelines.extractors.api_weather.extract.OUTPUT_DIR", tmp_path), \
+             patch("pipelines.extractors.api_weather.extract.extract_weather_for_league") as mock_extract:
 
             df = make_stadiums_df()
             extract_and_save_season(2022, ["Premier League"], df, tmp_path)
@@ -404,9 +403,9 @@ class TestExtractAndSaveSeason:
             mock_extract.assert_not_called()
 
     def test_exception_on_one_league_does_not_block_others(self, tmp_path):
-        with patch("pipelines.api_weather.extract.OUTPUT_DIR", tmp_path), \
-             patch("pipelines.api_weather.extract.extract_weather_for_league") as mock_extract, \
-             patch("pipelines.api_weather.extract.save_raw_data") as mock_save:
+        with patch("pipelines.extractors.api_weather.extract.OUTPUT_DIR", tmp_path), \
+             patch("pipelines.extractors.api_weather.extract.extract_weather_for_league") as mock_extract, \
+             patch("pipelines.extractors.api_weather.extract.save_raw_data") as mock_save:
 
             def side_effect(league_name, season, stadiums_df, fixtures_dir):
                 if league_name == "Premier League":
@@ -425,9 +424,9 @@ class TestExtractAndSaveSeason:
 
 class TestRunPipeline:
 
-    @patch("pipelines.api_weather.extract.extract_and_save_season")
-    @patch("pipelines.api_weather.extract.load_leagues")
-    @patch("pipelines.api_weather.extract.load_stadiums")
+    @patch("pipelines.extractors.api_weather.extract.extract_and_save_season")
+    @patch("pipelines.extractors.api_weather.extract.load_leagues")
+    @patch("pipelines.extractors.api_weather.extract.load_stadiums")
     def test_runs_once_per_season(self, mock_load_stadiums, mock_load_leagues, mock_extract_and_save):
         mock_load_stadiums.return_value = make_stadiums_df()
         mock_load_leagues.return_value = {"Premier League": 39, "Ligue 1": 61}
@@ -436,9 +435,9 @@ class TestRunPipeline:
 
         assert mock_extract_and_save.call_count == 2
 
-    @patch("pipelines.api_weather.extract.extract_and_save_season")
-    @patch("pipelines.api_weather.extract.load_leagues")
-    @patch("pipelines.api_weather.extract.load_stadiums")
+    @patch("pipelines.extractors.api_weather.extract.extract_and_save_season")
+    @patch("pipelines.extractors.api_weather.extract.load_leagues")
+    @patch("pipelines.extractors.api_weather.extract.load_stadiums")
     def test_loads_referentials_only_once(self, mock_load_stadiums, mock_load_leagues, mock_extract_and_save):
         mock_load_stadiums.return_value = make_stadiums_df()
         mock_load_leagues.return_value = {"Premier League": 39}
@@ -448,9 +447,9 @@ class TestRunPipeline:
         mock_load_stadiums.assert_called_once()
         mock_load_leagues.assert_called_once()
 
-    @patch("pipelines.api_weather.extract.extract_and_save_season")
-    @patch("pipelines.api_weather.extract.load_leagues")
-    @patch("pipelines.api_weather.extract.load_stadiums")
+    @patch("pipelines.extractors.api_weather.extract.extract_and_save_season")
+    @patch("pipelines.extractors.api_weather.extract.load_leagues")
+    @patch("pipelines.extractors.api_weather.extract.load_stadiums")
     def test_passes_league_names_not_ids(self, mock_load_stadiums, mock_load_leagues, mock_extract_and_save):
         mock_load_stadiums.return_value = make_stadiums_df()
         mock_load_leagues.return_value = {"Premier League": 39, "Ligue 1": 61}
@@ -460,9 +459,9 @@ class TestRunPipeline:
         called_leagues = mock_extract_and_save.call_args.args[1]
         assert called_leagues == ["Premier League", "Ligue 1"]
 
-    @patch("pipelines.api_weather.extract.extract_and_save_season")
-    @patch("pipelines.api_weather.extract.load_leagues")
-    @patch("pipelines.api_weather.extract.load_stadiums")
+    @patch("pipelines.extractors.api_weather.extract.extract_and_save_season")
+    @patch("pipelines.extractors.api_weather.extract.load_leagues")
+    @patch("pipelines.extractors.api_weather.extract.load_stadiums")
     def test_exception_on_one_season_does_not_block_others(self, mock_load_stadiums, mock_load_leagues, mock_extract_and_save):
         mock_load_stadiums.return_value = make_stadiums_df()
         mock_load_leagues.return_value = {"Premier League": 39}
@@ -473,7 +472,7 @@ class TestRunPipeline:
 
         assert mock_extract_and_save.call_count == 2
 
-    @patch("pipelines.api_weather.extract.load_stadiums")
+    @patch("pipelines.extractors.api_weather.extract.load_stadiums")
     def test_missing_stadiums_csv_raises_filenotfounderror(self, mock_load_stadiums):
         mock_load_stadiums.side_effect = FileNotFoundError("stadiums.csv introuvable")
 

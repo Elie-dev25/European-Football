@@ -1,10 +1,11 @@
+# pipelines/kaggle/extract.py
 import json
 import sqlite3
 import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
-from pipelines.kaggle.extract import (
+from pipelines.extractors.kaggle.extract import (
     _connect_sqlite,
     _read_table,
     _file_exists,
@@ -158,7 +159,7 @@ class TestExtractTable:
     def test_skips_if_file_exists(self, tmp_path):
         existing = tmp_path / "team.json"
         existing.write_text("[]")
-        with patch("pipelines.kaggle.extract._connect_sqlite") as mock_conn:
+        with patch("pipelines.extractors.kaggle.extract._connect_sqlite") as mock_conn:
             extract_table("team", "SELECT * FROM Team", "team.json", tmp_path / "db.sqlite", tmp_path)
             mock_conn.assert_not_called()
 
@@ -180,7 +181,7 @@ class TestExtractTable:
     def test_idempotence_does_not_overwrite(self, tmp_path):
         existing = tmp_path / "team.json"
         existing.write_text('[{"id": 99}]')
-        with patch("pipelines.kaggle.extract._connect_sqlite"):
+        with patch("pipelines.extractors.kaggle.extract._connect_sqlite"):
             extract_table("team", "SELECT * FROM Team", "team.json", tmp_path / "db.sqlite", tmp_path)
         with open(existing) as f:
             result = json.load(f)
@@ -199,8 +200,8 @@ class TestRunPipeline:
             "league_name,league_id,country,kaggle_league_id\n"
             "Premier League,39,England,1729\n"
         )
-        with patch("pipelines.kaggle.extract.extract_table") as mock_extract, \
-             patch("pipelines.kaggle.extract.LEAGUES_CSV", leagues_csv):
+        with patch("pipelines.extractors.kaggle.extract.extract_table") as mock_extract, \
+             patch("pipelines.extractors.kaggle.extract.LEAGUES_CSV", leagues_csv):
             run_pipeline(db_path=tmp_path / "db.sqlite", output_dir=tmp_path)
             # TABLES_CONFIG + match = 4 tables
             assert mock_extract.call_count == len(TABLES_CONFIG) + 1
@@ -211,8 +212,8 @@ class TestRunPipeline:
             "league_name,league_id,country,kaggle_league_id\n"
             "Premier League,39,England,1729\n"
         )
-        with patch("pipelines.kaggle.extract.extract_table", side_effect=Exception("erreur")), \
-             patch("pipelines.kaggle.extract.LEAGUES_CSV", leagues_csv):
+        with patch("pipelines.extractors.kaggle.extract.extract_table", side_effect=Exception("erreur")), \
+             patch("pipelines.extractors.kaggle.extract.LEAGUES_CSV", leagues_csv):
             # Ne doit pas lever d'exception
             run_pipeline(db_path=tmp_path / "db.sqlite", output_dir=tmp_path)
 
@@ -224,8 +225,8 @@ class TestRunPipeline:
             "Ligue 1,61,France,4769\n"
         )
         calls = []
-        with patch("pipelines.kaggle.extract.extract_table", side_effect=lambda **kw: calls.append(kw)), \
-             patch("pipelines.kaggle.extract.LEAGUES_CSV", leagues_csv):
+        with patch("pipelines.extractors.kaggle.extract.extract_table", side_effect=lambda **kw: calls.append(kw)), \
+             patch("pipelines.extractors.kaggle.extract.LEAGUES_CSV", leagues_csv):
             run_pipeline(db_path=tmp_path / "db.sqlite", output_dir=tmp_path)
         match_call = next(c for c in calls if c["filename"] == "match_2008_2016.json")
         assert "1729" in match_call["query"]
