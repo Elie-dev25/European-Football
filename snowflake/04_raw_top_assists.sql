@@ -1,0 +1,66 @@
+-- snowflake/04_raw_top_assists.sql
+-- Table RAW : miroir SQL aplati du Bronze S3 (api_football/top_assists)
+-- Aucune transformation métier — extraction 1:1 des champs pertinents
+-- Structure identique à TOP_SCORERS (même endpoint API-Football, statistiques joueurs)
+
+USE DATABASE FOOTBALL_DB;
+USE SCHEMA RAW;
+
+CREATE TABLE IF NOT EXISTS TOP_ASSISTS (
+    player_id              NUMBER COMMENT 'Identifiant du joueur',
+    player_name             STRING COMMENT 'Nom complet affiché',
+    firstname               STRING COMMENT 'Prénom',
+    lastname                 STRING COMMENT 'Nom de famille',
+    age                      NUMBER COMMENT 'Âge du joueur',
+    birth_date               DATE COMMENT 'Date de naissance',
+    birth_place              STRING COMMENT 'Lieu de naissance',
+    birth_country            STRING COMMENT 'Pays de naissance',
+    nationality               STRING COMMENT 'Nationalité',
+    height                   STRING COMMENT 'Taille (ex. 195 cm)',
+    weight                   STRING COMMENT 'Poids (ex. 88 kg)',
+    injured                  BOOLEAN COMMENT 'Blessé au moment de l''extraction',
+    team_id                   NUMBER COMMENT 'Identifiant de l''équipe',
+    team_name                 STRING COMMENT 'Nom de l''équipe',
+    league_id                 NUMBER COMMENT 'Identifiant de la ligue',
+    league_name               STRING COMMENT 'Nom de la ligue',
+    league_country            STRING COMMENT 'Pays de la ligue',
+    season                    NUMBER COMMENT 'Saison',
+    appearences                NUMBER COMMENT 'Matchs disputés',
+    lineups                    NUMBER COMMENT 'Titularisations',
+    minutes                    NUMBER COMMENT 'Minutes jouées',
+    position                   STRING COMMENT 'Poste',
+    rating                     STRING COMMENT 'Note moyenne (renvoyée en string par l''API)',
+    captain                    BOOLEAN COMMENT 'Était capitaine',
+    subs_in                    NUMBER COMMENT 'Entrées en jeu',
+    subs_out                   NUMBER COMMENT 'Sorties',
+    subs_bench                 NUMBER COMMENT 'Sur le banc',
+    shots_total                NUMBER COMMENT 'Tirs tentés',
+    shots_on                   NUMBER COMMENT 'Tirs cadrés',
+    goals_total                NUMBER COMMENT 'Buts marqués',
+    goals_conceded              NUMBER COMMENT 'Buts encaissés (gardiens)',
+    goals_assists               NUMBER COMMENT 'Passes décisives',
+    goals_saves                 NUMBER COMMENT 'Arrêts (gardiens)',
+    passes_total                NUMBER COMMENT 'Passes totales',
+    passes_key                  NUMBER COMMENT 'Passes clés',
+    passes_accuracy              NUMBER COMMENT 'Précision des passes',
+    tackles_total                NUMBER COMMENT 'Tacles',
+    tackles_blocks                NUMBER COMMENT 'Contres',
+    tackles_interceptions          NUMBER COMMENT 'Interceptions',
+    duels_total                  NUMBER COMMENT 'Duels totaux',
+    duels_won                    NUMBER COMMENT 'Duels gagnés',
+    dribbles_attempts              NUMBER COMMENT 'Tentatives de dribble',
+    dribbles_success                NUMBER COMMENT 'Dribbles réussis',
+    dribbles_past                   NUMBER COMMENT 'Adversaires dribblés (défenseurs)',
+    fouls_drawn                     NUMBER COMMENT 'Fautes subies',
+    fouls_committed                  NUMBER COMMENT 'Fautes commises',
+    cards_yellow                    NUMBER COMMENT 'Cartons jaunes',
+    cards_yellowred                  NUMBER COMMENT 'Deuxième jaune',
+    cards_red                        NUMBER COMMENT 'Cartons rouges',
+    penalty_won                      NUMBER COMMENT 'Penalties obtenus',
+    penalty_committed                 NUMBER COMMENT 'Penalties concédés',
+    penalty_scored                    NUMBER COMMENT 'Penalties marqués',
+    penalty_missed                    NUMBER COMMENT 'Penalties manqués',
+    penalty_saved                     NUMBER COMMENT 'Penalties arrêtés (gardiens)',
+    CONSTRAINT pk_top_assists PRIMARY KEY (league_id, season, team_id, player_id)
+)
+COMMENT = 'Miroir aplati du Bronze S3 api_football/{league}_{season}_top_assists.json';
