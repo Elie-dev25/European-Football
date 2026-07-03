@@ -36,10 +36,12 @@ def inspect(obj, indent=0, max_items=2, max_depth=4):
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python scripts/inspect_json.py <chemin_vers_fichier.json>")
+        print("Usage: python scripts/inspect_json.py <chemin_vers_fichier.json> [max_depth]")
         sys.exit(1)
 
     filepath = Path(sys.argv[1])
+    max_depth = int(sys.argv[2]) if len(sys.argv) > 2 else 4
+
     if not filepath.exists():
         print(f"Fichier introuvable : {filepath}")
         sys.exit(1)
@@ -48,8 +50,7 @@ def main():
         data = json.load(f)
 
     print(f"=== Structure de {filepath.name} ===\n")
-    inspect(data)
-
+    inspect(data, max_depth=max_depth)
 
 if __name__ == "__main__":
     main()
