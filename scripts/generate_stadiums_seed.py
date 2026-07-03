@@ -34,6 +34,13 @@ NOMINATIM_HEADERS = {
 # Délai entre chaque appel Nominatim — leur politique impose 1 req/seconde maximum
 NOMINATIM_DELAY = 1.1  # un peu plus que 1 seconde pour être sûr de ne pas dépasser la limite 
 
+# Corrections manuelles pour les cas où Nominatim se trompe de lieu homonyme
+# (ex. Southampton, UK confondu avec Southampton, Massachusetts, USA)
+# Clé = team_name tel qu'il apparaît dans les fixtures (voir extract_teams_from_fixtures)
+MANUAL_COORDINATES_OVERRIDES = {
+    "Southampton": (50.905833, -1.391111),  # St Mary's Stadium, UK
+}
+
 def extract_teams_from_fixtures(fixtures_dir: Path) -> pd.DataFrame:
     """
     Parcourt tous les fichiers *_fixtures.json dans fixtures_dir,
@@ -207,7 +214,14 @@ def generate_stadiums_seed(fixtures_dir: Path, stadiums_csv: Path) -> None:
     logger.info(f"{len(new_teams)} nouvelle(s) équipe(s) à géocoder")
 
     for idx, row in new_teams.iterrows():
-        lat, lon = get_coordinates(row["stadium_name"], row["city"])
+        team_name = row["team_name"]
+
+        if team_name in MANUAL_COORDINATES_OVERRIDES:
+            lat, lon = MANUAL_COORDINATES_OVERRIDES[team_name]
+            logger.info(f"Coordonnées manuelles utilisées pour '{team_name}' → ({lat}, {lon})")
+        else:
+            lat, lon = get_coordinates(row["stadium_name"], row["city"])
+
         df.at[idx, "latitude"] = lat
         df.at[idx, "longitude"] = lon
 

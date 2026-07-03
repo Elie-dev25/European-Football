@@ -343,7 +343,8 @@ def extract_and_save_season(
     season: int,
     leagues: list,
     stadiums_df: pd.DataFrame,
-    fixtures_dir: Path
+    fixtures_dir: Path,
+    output_dir: Path = OUTPUT_DIR
 ) -> None:
     """
     Point d'entrée par saison : vérifie l'idempotence AVANT d'extraire,
@@ -357,17 +358,16 @@ def extract_and_save_season(
     """
     for league_name in leagues:
         # Idempotence : si le fichier existe déjà, on ne retélécharge rien
-        if _file_exists(league_name, season, OUTPUT_DIR):
+        if _file_exists(league_name, season, output_dir):
             logger.info(f"[SKIP] {league_name} {season} — déjà traité")
             continue
 
         logger.info(f"=== Traitement : {league_name} {season} ===")
         try:
             results = extract_weather_for_league(league_name, season, stadiums_df, fixtures_dir)
-            save_raw_data({league_name: results}, season, OUTPUT_DIR)
+            save_raw_data({league_name: results}, season, output_dir)
         except Exception as e:
             logger.error(f"Échec traitement {league_name} {season} : {e} — on continue avec les autres ligues")
-
 
 def run_pipeline(seasons: list = SEASONS) -> None:
     """

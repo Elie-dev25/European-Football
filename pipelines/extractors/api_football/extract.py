@@ -132,7 +132,22 @@ def _file_exists(league_name: str, season: int, data_type: str, output_dir: Path
     - Ajouter une nouvelle saison sans re-télécharger les saisons existantes
     """
     filepath = build_filepath(output_dir, league_name, season, data_type)
-    return filepath.exists()
+    return filepath.exists() 
+
+
+def _is_valid_content(data: dict) -> bool:
+    """
+    Vérifie que le contenu chargé depuis un fichier existant est exploitable.
+
+    Un fichier peut exister sur disque tout en étant inutilisable — notamment
+    quand un rate limit API a été atteint pendant l'extraction, produisant
+    un JSON syntaxiquement valide mais avec une réponse vide (ex. Bundesliga
+    top_assists/top_scorers 2022, 298 octets, "response": []).
+
+    Ce n'est PAS une erreur JSON (json.load() réussit), donc _file_exists()
+    seul ne peut pas la détecter — d'où cette vérification de contenu séparée.
+    """
+    return bool(data.get("response"))
 
 
 # === Orchestration ===
@@ -159,14 +174,20 @@ def extract_league_data(league_name: str, league_id: int, season: int, output_di
             filepath = build_filepath(output_dir, league_name, season, data_type)
             try:
                 with open(filepath, "r", encoding="utf-8") as f:
-                    data[data_type] = json.load(f)
-                logger.info(f"Déjà téléchargé — {league_name} {season} {data_type} ignoré (0 requête consommée)")
+                    loaded = json.load(f)
+
+                if _is_valid_content(loaded):
+                    data[data_type] = loaded
+                    logger.info(f"Déjà téléchargé — {league_name} {season} {data_type} ignoré (0 requête consommée)")
+                else:
+                    logger.warning(f"{filepath} contient une réponse vide (probable rate limit) — re-téléchargement depuis l'API")
+                    data[data_type] = getters[data_type]()
+
             except (json.JSONDecodeError, OSError) as e:
                 logger.error(f"Fichier {filepath} corrompu ou illisible ({e}) — re-téléchargement depuis l'API")
                 data[data_type] = getters[data_type]()
         else:
             data[data_type] = getters[data_type]()
-
     logger.info(f"Terminé pour {league_name}, saison {season}")
     return data
 
@@ -198,8 +219,9 @@ def save_raw_data(all_data: dict, season: int, output_dir: Path) -> None:
 
     Exemple de fichier généré : data/raw/api_football/premier_league_2022_fixtures.json
 
-    Ne sauvegarde pas les fichiers déjà existants — cohérent avec la logique
-    d'idempotence dans extract_league_data().
+    Ne réécrit pas un fichier existant SAUF si son contenu est invalide
+    (réponse vide, probable rate limit lors d'un run précédent) — dans ce cas,
+    il est remplacé par les données fraîchement extraites.
     """
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -208,18 +230,24 @@ def save_raw_data(all_data: dict, season: int, output_dir: Path) -> None:
             filepath = build_filepath(output_dir, league_name, season, data_type)
 
             if filepath.exists():
-                # Déjà présent — on ne réécrit pas, cohérence avec l'idempotence
-                logger.info(f"Fichier existant conservé — {filepath.name}")
-                continue
+                try:
+                    with open(filepath, "r", encoding="utf-8") as f:
+                        existing = json.load(f)
+
+                    if _is_valid_content(existing):
+                        logger.info(f"Fichier existant conservé — {filepath.name}")
+                        continue
+                    else:
+                        logger.warning(f"{filepath.name} existant invalide (réponse vide) — écrasement avec les nouvelles données")
+
+                except (json.JSONDecodeError, OSError) as e:
+                    logger.error(f"Fichier {filepath.name} existant corrompu ou illisible ({e}) — écrasement avec les nouvelles données")
 
             with open(filepath, "w", encoding="utf-8") as f:
-                # ensure_ascii=False pour garder les accents/caractères spéciaux
-                # lisibles dans le fichier (noms de joueurs, villes, etc.)
                 json.dump(content, f, indent=2, ensure_ascii=False)
             logger.info(f"Sauvegardé — {filepath.name}")
 
     logger.info(f"Sauvegarde terminée dans {output_dir}/")
-
 
 # === Orchestration multi-saisons ===
 

@@ -379,32 +379,26 @@ class TestExtractAndSaveSeason:
     @patch("pipelines.extractors.api_weather.extract.save_raw_data")
     @patch("pipelines.extractors.api_weather.extract.extract_weather_for_league")
     def test_extracts_and_saves_each_league(self, mock_extract, mock_save, tmp_path):
-        # _file_exists utilise build_filepath(OUTPUT_DIR, ...) -> on pointe OUTPUT_DIR vers tmp_path
-        with patch("pipelines.extractors.api_weather.extract.OUTPUT_DIR", tmp_path):
-            mock_extract.return_value = [{"fixture_id": 1}]
-            df = make_stadiums_df()
+        mock_extract.return_value = [{"fixture_id": 1}]
+        df = make_stadiums_df()
 
-            extract_and_save_season(2022, ["Premier League"], df, tmp_path)
+        extract_and_save_season(2022, ["Premier League"], df, tmp_path, output_dir=tmp_path)
 
-            mock_extract.assert_called_once_with("Premier League", 2022, df, tmp_path)
-            mock_save.assert_called_once_with({"Premier League": [{"fixture_id": 1}]}, 2022, tmp_path)
+        mock_extract.assert_called_once_with("Premier League", 2022, df, tmp_path)
+        mock_save.assert_called_once_with({"Premier League": [{"fixture_id": 1}]}, 2022, tmp_path)
 
     def test_skips_league_already_processed(self, tmp_path):
-        # Fichier deja present pour Premier League dans OUTPUT_DIR (mocke = tmp_path)
         existing = tmp_path / "premier_league_2022_weather.json"
         existing.write_text("[]")
 
-        with patch("pipelines.extractors.api_weather.extract.OUTPUT_DIR", tmp_path), \
-             patch("pipelines.extractors.api_weather.extract.extract_weather_for_league") as mock_extract:
-
+        with patch("pipelines.extractors.api_weather.extract.extract_weather_for_league") as mock_extract:
             df = make_stadiums_df()
-            extract_and_save_season(2022, ["Premier League"], df, tmp_path)
+            extract_and_save_season(2022, ["Premier League"], df, tmp_path, output_dir=tmp_path)
 
             mock_extract.assert_not_called()
 
     def test_exception_on_one_league_does_not_block_others(self, tmp_path):
-        with patch("pipelines.extractors.api_weather.extract.OUTPUT_DIR", tmp_path), \
-             patch("pipelines.extractors.api_weather.extract.extract_weather_for_league") as mock_extract, \
+        with patch("pipelines.extractors.api_weather.extract.extract_weather_for_league") as mock_extract, \
              patch("pipelines.extractors.api_weather.extract.save_raw_data") as mock_save:
 
             def side_effect(league_name, season, stadiums_df, fixtures_dir):
@@ -415,12 +409,10 @@ class TestExtractAndSaveSeason:
             mock_extract.side_effect = side_effect
             df = make_stadiums_df()
 
-            # Ne doit pas lever -> exception capturee, "Ligue 1" doit etre traitee
-            extract_and_save_season(2022, ["Premier League", "Ligue 1"], df, tmp_path)
+            extract_and_save_season(2022, ["Premier League", "Ligue 1"], df, tmp_path, output_dir=tmp_path)
 
             assert mock_extract.call_count == 2
             mock_save.assert_called_once_with({"Ligue 1": [{"fixture_id": 1}]}, 2022, tmp_path)
-
 
 class TestRunPipeline:
 

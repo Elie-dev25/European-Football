@@ -18,6 +18,7 @@ from pipelines.extractors.api_football.extract import (
     get_top_scorers,
     get_top_assists,
     _file_exists,
+    _is_valid_content,
     extract_league_data,
     extract_all_leagues,
     save_raw_data,
@@ -248,7 +249,23 @@ class TestExtractLeagueData:
             mock_sc.assert_not_called()
             mock_a.assert_not_called()
 
-        assert result["standings"] == {"response": ["standings"]}
+        assert result["standings"] == {"response": ["standings"]} 
+
+    @patch("pipelines.extractors.api_football.extract.get_top_scorers")
+    def test_redownloads_when_existing_file_has_empty_response(self, mock_scorers, tmp_path):
+        filepath = tmp_path / "bundesliga_2022_top_scorers.json"
+        filepath.write_text(json.dumps({"response": []}))  # simule un fichier rate-limited
+
+        mock_scorers.return_value = {"response": ["fresh_data"]}
+
+        with patch("pipelines.extractors.api_football.extract.get_standings", return_value={"response": ["s"]}), \
+             patch("pipelines.extractors.api_football.extract.get_fixtures", return_value={"response": ["f"]}), \
+             patch("pipelines.extractors.api_football.extract.get_top_assists", return_value={"response": ["a"]}):
+
+            result = extract_league_data("Bundesliga", 78, 2022, tmp_path)
+
+        assert result["top_scorers"] == {"response": ["fresh_data"]}
+        mock_scorers.assert_called_once_with(78, 2022)
 
 
 class TestExtractAllLeagues:
@@ -331,7 +348,17 @@ class TestSaveRawData:
 
         assert (tmp_path / "premier_league_2022_fixtures.json").exists()
         assert (tmp_path / "premier_league_2022_standings.json").exists()
-        assert (tmp_path / "bundesliga_2022_fixtures.json").exists()
+        assert (tmp_path / "bundesliga_2022_fixtures.json").exists() 
+
+    def test_overwrites_existing_file_when_content_invalid(self, tmp_path):
+        filepath = tmp_path / "bundesliga_2022_top_scorers.json"
+        filepath.write_text(json.dumps({"response": []}))  # simule le fichier rate-limited
+
+        all_data = {"Bundesliga": {"top_scorers": {"response": ["fresh_scorer_data"]}}}
+        save_raw_data(all_data, season=2022, output_dir=tmp_path)
+
+        content = json.loads(filepath.read_text(encoding="utf-8"))
+        assert content == {"response": ["fresh_scorer_data"]}
 
 
 class TestExtractAndSaveSeason:
@@ -387,4 +414,16 @@ class TestRunPipeline:
 
         run_pipeline([2022])
 
-        mock_extract_and_save.assert_called_once()
+        mock_extract_and_save.assert_called_once() 
+
+
+class TestIsValidContent:
+
+    def test_valid_when_response_non_empty(self):
+        assert _is_valid_content({"response": ["data"]}) is True
+
+    def test_invalid_when_response_empty_list(self):
+        assert _is_valid_content({"response": []}) is False
+
+    def test_invalid_when_response_missing(self):
+        assert _is_valid_content({}) is False
