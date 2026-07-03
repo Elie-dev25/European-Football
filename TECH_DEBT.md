@@ -14,9 +14,7 @@ explicitement reconduite lors du refactoring global prevu en Phase 5 (Airflow).
 
 ## Bugs connus / contournements manuels
 
-| Emplacement | Probleme | Contournement actuel | A faire |
-|---|---|---|---|
-| `pipelines/extractors/api_football/extract.py` | Fichiers `bundesliga_2022_top_assists.json` et `bundesliga_2022_top_scorers.json` vides (298 octets) — rate limit API-Football (10 req/min) dépassé lors de l'extraction | Aucun — fichiers non exploitables en l'état | Re-extraire avant le chargement RAW (`feature/snowflake-load-raw`) |
+*Aucune entree active — voir section Resolu.*
 
 ## Fonctions non utilisees dans le flux principal
 
@@ -27,9 +25,7 @@ explicitement reconduite lors du refactoring global prevu en Phase 5 (Airflow).
 
 ## Limitations de testabilite
 
-| Emplacement | Probleme | Impact | A faire |
-|---|---|---|---|
-| `pipelines/extractors/api_weather/extract.py` | `extract_and_save_season` lit `OUTPUT_DIR` global plutot qu'un parametre injecte | Fonctionne bien, mais moins testable sans patcher le module global | Pas urgent |
+*Aucune entree active — voir section Resolu.*
 
 ## Scalabilite (non bloquant en Phase 1)
 
@@ -47,6 +43,8 @@ explicitement reconduite lors du refactoring global prevu en Phase 5 (Airflow).
 | 03/07/2026 | `dbt/seeds/stadiums.csv` | 7 lignes corrompues (Bournemouth, Brentford, Brighton, Leeds, Leicester, Nottingham Forest, Wolves) issues d'un bug de quoting CSV lors du commit `74f7057` — doublons de chaque ligne encapsules entierement entre guillemets | Lignes supprimees apres verification qu'aucun code ne les referencait (`load_stadiums()` fait un lookup exact par `team_name`, jamais atteint par ces lignes malformees) |
 | 03/07/2026 | `dbt/seeds/stadiums.csv` | Ligne orpheline `Southampton FC` (jamais ce nom dans les fixtures API-Football, qui utilisent `Southampton`) — vestige d'une correction manuelle anterieure sous un nom incorrect | Ligne supprimee |
 | 03/07/2026 | `scripts/generate_stadiums_seed.py` | Bug d'indentation dans la boucle de geocodage : `df.at[idx, "latitude"/"longitude"]` places hors de la boucle `for`, donc executes une seule fois apres la boucle au lieu d'une fois par equipe | Corrige — les deux lignes reindentees a l'interieur de la boucle |
+| 03/07/2026 | `pipelines/extractors/api_football/extract.py` | Fichiers `bundesliga_2022_top_assists.json` et `bundesliga_2022_top_scorers.json` vides (298 octets) — rate limit API-Football (10 req/min) depasse lors de l'extraction initiale | Nouvelle fonction `_is_valid_content()` : detecte une reponse vide et re-telecharge automatiquement, appliquee a la fois a la lecture (`extract_league_data`) et a l'ecriture (`save_raw_data`) — protection generalisee contre toute future ligue touchee par un rate limit, pas seulement Bundesliga. Fichiers re-extraits et valides (48 Ko chacun, conforme aux autres ligues) |
+| 03/07/2026 | `pipelines/extractors/api_weather/extract.py` | `extract_and_save_season` lisait `OUTPUT_DIR` global plutot qu'un parametre injecte — tests obliges de patcher le module global | `output_dir` devient un parametre explicite avec `OUTPUT_DIR` en valeur par defaut — comportement production inchange, tests simplifies (appel normal avec `output_dir=tmp_path`) |
 
 ---
 *Derniere mise a jour : 03/07/2026*
