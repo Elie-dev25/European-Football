@@ -5,6 +5,9 @@
 CREATE DATABASE IF NOT EXISTS FOOTBALL_DB
     COMMENT = 'European Football Analytics Platform - portfolio project';
 
+CREATE SCHEMA IF NOT EXISTS FOOTBALL_DB.STAGING
+    COMMENT = 'Zone de transit temporaire pour le chargement RAW — vidée à chaque run du loader, aucune donnée persistante';    
+
 CREATE SCHEMA IF NOT EXISTS FOOTBALL_DB.RAW
     COMMENT = 'Miroir SQL exact du Bronze S3 - aucune transformation';
 

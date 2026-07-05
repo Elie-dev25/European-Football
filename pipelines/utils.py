@@ -1,6 +1,12 @@
 import logging
 import pandas as pd
-from pathlib import Path
+from pathlib import Path 
+
+import os
+import snowflake.connector
+from dotenv import load_dotenv
+
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
@@ -78,4 +84,32 @@ def load_stadiums(stadiums_csv: Path) -> pd.DataFrame:
 
     df = pd.read_csv(stadiums_csv)
     logger.info(f"{len(df)} stade(s) chargé(s) depuis {stadiums_csv}")
-    return df
+    return df 
+
+# =============================================================================
+# Connexion Snowflake
+# =============================================================================
+
+def get_snowflake_connection():
+    """
+    Ouvre une nouvelle connexion Snowflake, credentials via .env.
+
+    Une connexion par appel (pas de client global réutilisé, contrairement à
+    s3_client dans s3_loader.py) : Snowflake gère l'auth par session, pas par
+    requête HTTP stateless, donc on préfère ouvrir/fermer explicitement autour
+    de chaque unité de travail plutôt que garder une connexion ouverte en
+    permanence au niveau module.
+
+    Usage :
+        with get_snowflake_connection() as conn:
+            ...
+
+    Lève snowflake.connector.errors.OperationalError si l'auth échoue.
+    """
+    return snowflake.connector.connect(
+        account=os.getenv("SNOWFLAKE_ACCOUNT"),
+        user=os.getenv("SNOWFLAKE_USER"),
+        password=os.getenv("SNOWFLAKE_PASSWORD"),
+        database=os.getenv("SNOWFLAKE_DATABASE"),
+        warehouse=os.getenv("SNOWFLAKE_WAREHOUSE"),
+    )

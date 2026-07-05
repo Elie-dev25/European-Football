@@ -37,14 +37,15 @@ This project builds a **production-grade data pipeline** covering the 5 major Eu
 
 ## 🚧 Current Status
 
-> Last updated: June 2026
+> Last updated: July 2026
 
 | Phase | Description | Status |
 |-------|-------------|--------|
 | **Phase 1** | Ingestion — API-Football | ✅ Done |
-| **Phase 1** | Ingestion — Open-Meteo (weather) | 🔄 In progress |
-| **Phase 1** | Ingestion — Kaggle SQLite (historical) | ⬜ Not started |
-| **Phase 2** | AWS S3 — Bronze layer upload | ⬜ Not started |
+| **Phase 1** | Ingestion — Open-Meteo (weather) | ✅ Done |
+| **Phase 1** | Ingestion — Kaggle SQLite (historical) | ✅ Done |
+| **Phase 2** | AWS S3 — Bronze layer upload | ✅ Done |
+| **Phase 3** | Snowflake — RAW layer (9 tables loaded) | ✅ Done |
 | **Phase 3** | Snowflake — Silver layer | ⬜ Not started |
 | **Phase 4** | dbt — Gold layer transformations | ⬜ Not started |
 | **Phase 5** | Apache Airflow — Orchestration | ⬜ Not started |
@@ -52,15 +53,16 @@ This project builds a **production-grade data pipeline** covering the 5 major Eu
 | **Phase 7** | Tests (pytest) + Final documentation | ⬜ Not started |
 
 **What works today:**
-- Full extraction pipeline for API-Football: standings, fixtures, top scorers, top assists
-- Covers all 5 leagues for season 2022 (extensible to 2023–2024 with one config change)
-- Automatic retry on rate-limit errors (429), structured logging compatible with Airflow
-- Raw data saved locally as JSON files under `data/raw/api_football/`
+- Full extraction pipeline for all 4 sources: API-Football, Open-Meteo, Kaggle SQLite, Nominatim
+- Bronze layer fully uploaded to S3 (`european-football` bucket)
+- All 9 RAW tables loaded into Snowflake (`FOOTBALL_DB.RAW`), verified end-to-end:
+  LEAGUE, TEAM, TEAM_ATTRIBUTES, MATCH, FIXTURES, STANDINGS, TOP_SCORERS, TOP_ASSISTS, WEATHER
+- Generic config-driven Snowflake loader (`pipelines/loaders/snowflake_loader.py`) — S3 (nested JSON) → flatten → STAGING (Python, write_pandas) → MERGE INTO RAW (upsert by business key)
+- 40+ unit tests on flatteners (`tests/loaders/test_snowflake_flatteners.py`), all against real extracted data, no synthetic fixtures
 
 **What does not work yet:**
-- Weather ingestion (in progress)
-- No S3 upload yet — data stays local
-- No Snowflake, dbt, Airflow, or Docker setup yet
+- No Silver layer yet — RAW is flat but still raw (no joins, no filtering, no aggregation)
+- No dbt, Airflow, or Docker setup yet
 - `docker-compose up` in the Getting Started section will not work until Phase 6
 
 ---
@@ -216,15 +218,15 @@ sequenceDiagram
 ## 📁 Project Structure
 
 ```
-European-Football/
-│
 ├── pipelines/
-│   ├── api_football/
-│   │   └── extract.py          ✅ Done — standings, fixtures, scorers, assists
-│   ├── api_weather/
-│   │   └── extract.py          🔄 In progress — Open-Meteo historical weather
-│   └── kaggle/
-│       └── extract.py          ⬜ Not started — SQLite extraction
+│   ├── utils.py                     ✅ Référentiels + connexion Snowflake centralisée
+│   ├── extractors/
+│   │   ├── api_football/extract.py  ✅ Done
+│   │   ├── api_weather/extract.py   ✅ Done
+│   │   └── kaggle/extract.py        ✅ Done
+│   └── loaders/
+│       ├── s3_loader.py             ✅ Done — Bronze → S3
+│       └── snowflake_loader.py      ✅ Done — S3 → STAGING → MERGE → RAW (9/9 tables)
 │
 ├── scripts/
 │   └── generate_stadiums_seed.py  ✅ Done — geocodes stadiums via Nominatim → stadiums.csv
@@ -271,7 +273,9 @@ European-Football/
 | **dbt** | Data transformations — Gold layer | ⬜ Phase 4 |
 | **Apache Airflow** | Pipeline orchestration & scheduling | ⬜ Phase 5 |
 | **Docker** | Containerization & reproducibility | ⬜ Phase 6 |
-| **pytest** | Unit testing with mocks | ⬜ Phase 7 |
+| **pytest** | Unit testing with mocks | ⬜ Phase 7 | 
+| **AWS S3** | Raw data storage — Bronze layer | ✅ Done |
+| **Snowflake** | Data Warehouse — RAW layer loaded, Silver pending | 🔄 In progress |
 
 ---
 
