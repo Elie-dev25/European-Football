@@ -11,4 +11,6 @@ __pycache__/
 .DS_Store
 dbt/target/
 dbt/dbt_packages/ 
-s -ExecutionPolicy*
+s -ExecutionPolicy* 
+api_football_teams.md
+kaggle_teams.txt
