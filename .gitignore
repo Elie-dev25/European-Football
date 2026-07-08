@@ -5,6 +5,7 @@ venv/
 notes/
 get-pip.py
 simple_test.py
+simple_test.sql
 *.py.bak
 __pycache__/
 *.pyc
