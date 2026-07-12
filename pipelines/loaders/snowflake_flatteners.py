@@ -68,11 +68,17 @@ def flatten_team_attributes(raw_json: list[dict]) -> pd.DataFrame:
     pas une précaution abstraite) -> converti en Int64 nullable comme
     team_fifa_api_id dans flatten_team.
 
-    date arrive en string ("2010-02-22 00:00:00") -> converti en datetime
-    pour correspondre au type TIMESTAMP_NTZ de la table cible.
+    date arrive en string ("2010-02-22 00:00:00") -> revalidée via pd.to_datetime
+    puis reformatée en texte propre (.dt.strftime) plutôt que laissée en
+    datetime64. Raison : write_pandas corrompt silencieusement les colonnes
+    datetime64 lors de l'écriture (bug du chemin Arrow -> Parquet -> Snowflake,
+    confirmé empiriquement, indépendant de la magnitude ns/us). Contournement
+    validé : transporter la date en STRING jusqu'en STAGING, conversion en
+    TIMESTAMP_NTZ déléguée au MERGE (SQL pur, aucune perte de précision).
 
-    Bronze strict : aucune ligne filtrée, clé composite (team_api_id, date)
-    gérée par la config du loader, pas ici.
+    2 lignes strictement dupliquées détectées dans la source (team_api_id=9996,
+    date=2015-09-10, id 860 et 861 — contenu identique en tout point sauf id) ->
+    dédupliquées sur (team_api_id, date), la clé métier de la table.
     """
     df = pd.DataFrame(raw_json)
 
@@ -101,7 +107,8 @@ def flatten_team_attributes(raw_json: list[dict]) -> pd.DataFrame:
     })
 
     df["build_up_play_dribbling"] = df["build_up_play_dribbling"].astype("Int64")
-    df["date"] = pd.to_datetime(df["date"])
+    df["date"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%d %H:%M:%S")
+    df = df.drop_duplicates(subset=["team_api_id", "date"], keep="first")
 
     return df[[
         "id", "team_fifa_api_id", "team_api_id", "date",
