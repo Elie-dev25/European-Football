@@ -212,65 +212,67 @@ flowchart LR
 ---
 
 ## 📁 Project Structure
-├── pipelines/
-│   ├── utils.py                          # Snowflake connection + shared config
-│   ├── quality.py                        # Generic quality checks (nulls, duplicates, drift)
-│   ├── extractors/
-│   │   ├── api_football/extract.py       ✅ API-Football extractor
-│   │   ├── api_weather/extract.py        ✅ Open-Meteo extractor
-│   │   └── kaggle/extract.py             ✅ Kaggle SQLite extractor
-│   ├── loaders/
-│   │   ├── s3_loader.py                  ✅ Bronze → S3 (idempotent)
-│   │   ├── snowflake_loader.py           ✅ S3 → STAGING → MERGE → RAW (9 tables)
-│   │   └── snowflake_flatteners.py       ✅ JSON → flat DataFrames
-│   └── transformers/
-│       ├── team_crosswalk.py             ✅ Kaggle ↔ API-Football identity crosswalk
-│       ├── silver_weather.py             ✅ SILVER.WEATHER_MATCH
-│       ├── silver_match_core.py          ✅ SILVER.MATCH_CORE
-│       ├── silver_fixtures_core.py       ✅ SILVER.FIXTURES_CORE
-│       ├── silver_league.py              ✅ SILVER.LEAGUE
-│       ├── silver_team_attributes.py     ✅ SILVER.TEAM_ATTRIBUTES
-│       ├── silver_standings.py           ✅ SILVER.STANDINGS
-│       ├── silver_top_scorers.py         ✅ SILVER.TOP_SCORERS
-│       └── silver_top_assists.py         ✅ SILVER.TOP_ASSISTS
-│
-├── scripts/
-│   ├── generate_stadiums_seed.py         # Nominatim → dbt/seeds/stadiums.csv (one-shot)
-│   ├── get_orphans_teams.py              # Investigation: orphan team IDs in MATCH_CORE
-│   ├── check_match_core_quality.py       ✅ Quality check — MATCH_CORE
-│   ├── check_fixtures_core_quality.py    ✅ Quality check — FIXTURES_CORE
-│   ├── check_league_quality.py           ✅ Quality check — LEAGUE
-│   ├── check_team_attributes_quality.py  ✅ Quality check — TEAM_ATTRIBUTES
-│   ├── check_standings_quality.py        ✅ Quality check — STANDINGS
-│   ├── check_top_scorers_quality.py      ✅ Quality check — TOP_SCORERS
-│   └── check_top_assists_quality.py      ✅ Quality check — TOP_ASSISTS
-│
-├── snowflake/
-│   ├── 00_setup_database.sql             # Database + schema creation
-│   ├── raw/                              # 9 RAW table DDLs
-│   ├── staging/                          # 9 STAGING table DDLs
-│   └── silver/                           # 9 SILVER table DDLs
-│
-├── dbt/
-│   └── seeds/
-│       ├── leagues.csv                   # 5 leagues reference data
-│       └── stadiums.csv                  # 99 stadiums with GPS coordinates
-│
-├── dags/
-│   └── football_pipeline.py             ⬜ Airflow DAG (Phase 5)
-│
-├── docker/                               ⬜ Phase 6
-│
-├── tests/
-│   ├── extractors/                       ✅ API-Football, Open-Meteo, Kaggle
-│   ├── loaders/                          ✅ S3 loader, Snowflake flatteners
-│   └── transformers/                     ✅ All 9 Silver transformers
-│                                         196 tests total, all passing
-│
-├── TECH_DEBT.md                          # Tracked technical debt
-├── configs/settings.py
-├── requirements.txt
-└── .env
+```
+pipelines/
+├── utils.py                          # Snowflake connection + shared config
+├── quality.py                        # Generic quality checks (nulls, duplicates, drift)
+├── extractors/
+│   ├── api_football/extract.py       # API-Football extractor
+│   ├── api_weather/extract.py        # Open-Meteo extractor
+│   └── kaggle/extract.py             # Kaggle SQLite extractor
+├── loaders/
+│   ├── s3_loader.py                  # Bronze → S3 (idempotent)
+│   ├── snowflake_loader.py           # S3 → STAGING → MERGE → RAW (9 tables)
+│   └── snowflake_flatteners.py       # JSON → flat DataFrames
+└── transformers/
+    ├── team_crosswalk.py             # Kaggle ↔ API-Football identity crosswalk
+    ├── silver_weather.py             # SILVER.WEATHER_MATCH
+    ├── silver_match_core.py          # SILVER.MATCH_CORE
+    ├── silver_fixtures_core.py       # SILVER.FIXTURES_CORE
+    ├── silver_league.py              # SILVER.LEAGUE
+    ├── silver_team_attributes.py     # SILVER.TEAM_ATTRIBUTES
+    ├── silver_standings.py           # SILVER.STANDINGS
+    ├── silver_top_scorers.py         # SILVER.TOP_SCORERS
+    └── silver_top_assists.py         # SILVER.TOP_ASSISTS
+
+scripts/
+├── generate_stadiums_seed.py         # Nominatim → dbt/seeds/stadiums.csv (one-shot)
+├── get_orphans_teams.py              # Investigation: orphan team IDs in MATCH_CORE
+├── check_match_core_quality.py       # Quality check — MATCH_CORE
+├── check_fixtures_core_quality.py    # Quality check — FIXTURES_CORE
+├── check_league_quality.py           # Quality check — LEAGUE
+├── check_team_attributes_quality.py  # Quality check — TEAM_ATTRIBUTES
+├── check_standings_quality.py        # Quality check — STANDINGS
+├── check_top_scorers_quality.py      # Quality check — TOP_SCORERS
+└── check_top_assists_quality.py      # Quality check — TOP_ASSISTS
+
+snowflake/
+├── 00_setup_database.sql             # Database + schema creation
+├── raw/                              # 9 RAW table DDLs
+├── staging/                          # 9 STAGING table DDLs
+└── silver/                           # 9 SILVER table DDLs
+
+dbt/
+└── seeds/
+    ├── leagues.csv                   # 5 leagues reference data
+    └── stadiums.csv                  # 99 stadiums with GPS coordinates
+
+dags/
+└── football_pipeline.py              # Airflow DAG (Phase 5)
+
+docker/                               # Phase 6
+
+tests/
+├── extractors/                       # API-Football, Open-Meteo, Kaggle
+├── loaders/                          # S3 loader, Snowflake flatteners
+└── transformers/                     # All 9 Silver transformers
+                                      # 196 tests total, all passing
+
+TECH_DEBT.md                          # Tracked technical debt
+configs/settings.py
+requirements.txt
+.env
+```
 
 ---
 
