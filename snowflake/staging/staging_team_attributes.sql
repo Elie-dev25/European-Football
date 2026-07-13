@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS TEAM_ATTRIBUTES (
     id                                 NUMBER,
     team_fifa_api_id                   NUMBER,
     team_api_id                        NUMBER,
-    date                               TIMESTAMP_NTZ,
+    date                               STRING,
     build_up_play_speed                NUMBER,
     build_up_play_speed_class          STRING,
     build_up_play_dribbling            NUMBER,
