@@ -34,11 +34,19 @@ def get_row_count(conn, database: str, schema: str, table: str, where: str = "")
     return cursor.fetchone()[0]
 
 
-def get_duplicate_count(conn, database: str, schema: str, table: str, key_column: str) -> int:
-    """Compte les doublons sur une colonne clé."""
+def get_duplicate_count(conn, database: str, schema: str, table: str, key_columns) -> int:
+    """
+    Compte les doublons sur une clé, simple ou composite.
+    key_columns accepte soit une chaîne (clé simple, ex. "MATCH_API_ID"),
+    soit une liste (clé composite, ex. ["TEAM_API_ID", "DATE"]).
+    """
+    if isinstance(key_columns, str):
+        key_columns = [key_columns]
+
     cursor = conn.cursor()
+    cols = ", ".join(f'"{col}"' for col in key_columns)
     cursor.execute(f"""
-        SELECT COUNT(*) - COUNT(DISTINCT "{key_column}")
+        SELECT COUNT(*) - COUNT(DISTINCT ({cols}))
         FROM {database}.{schema}.{table};
     """)
     return cursor.fetchone()[0]
