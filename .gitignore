@@ -5,10 +5,13 @@ venv/
 notes/
 get-pip.py
 simple_test.py
+simple_test.sql
 *.py.bak
 __pycache__/
 *.pyc
 .DS_Store
 dbt/target/
 dbt/dbt_packages/ 
-s -ExecutionPolicy*
+s -ExecutionPolicy* 
+api_football_teams.md
+kaggle_teams.txt
