@@ -39,6 +39,8 @@ def get_duplicate_count(conn, database: str, schema: str, table: str, key_column
     Compte les doublons sur une clé, simple ou composite.
     key_columns accepte soit une chaîne (clé simple, ex. "MATCH_API_ID"),
     soit une liste (clé composite, ex. ["TEAM_API_ID", "DATE"]).
+    Implémentation via sous-requête SELECT DISTINCT plutôt que COUNT(DISTINCT (tuple)),
+    car Snowflake ne supporte pas COUNT(DISTINCT ...) sur un ROW multi-colonnes.
     """
     if isinstance(key_columns, str):
         key_columns = [key_columns]
@@ -46,11 +48,12 @@ def get_duplicate_count(conn, database: str, schema: str, table: str, key_column
     cursor = conn.cursor()
     cols = ", ".join(f'"{col}"' for col in key_columns)
     cursor.execute(f"""
-        SELECT COUNT(*) - COUNT(DISTINCT ({cols}))
-        FROM {database}.{schema}.{table};
+        SELECT
+            (SELECT COUNT(*) FROM {database}.{schema}.{table})
+            -
+            (SELECT COUNT(*) FROM (SELECT DISTINCT {cols} FROM {database}.{schema}.{table}));
     """)
     return cursor.fetchone()[0]
-
 
 def evaluate_quality(null_counts: dict, critical_columns: set) -> tuple[bool, list[str]]:
     """
@@ -66,3 +69,29 @@ def evaluate_quality(null_counts: dict, critical_columns: set) -> tuple[bool, li
             errors.append(f"{column} : {count} NULL (colonne critique)")
 
     return len(errors) == 0, errors
+
+def get_max_timestamp_drift_seconds(conn, database: str,
+                                     raw_schema: str, raw_table: str,
+                                     silver_schema: str, silver_table: str,
+                                     key_columns, timestamp_column: str) -> float:
+    """
+    Compare l'instant d'une colonne timestamp entre RAW et SILVER, ligne à ligne
+    (jointure sur key_columns), et retourne l'écart maximal en secondes.
+    Sert à détecter une corruption write_pandas (cf. bug TEAM_ATTRIBUTES) sur
+    toute table qui transporte un datetime64 nativement plutôt qu'en STRING.
+    Une perte de précision (ns -> us) donne un écart proche de 0, pas un vrai décalage.
+    """
+    if isinstance(key_columns, str):
+        key_columns = [key_columns]
+
+    join_clause = " AND ".join(f'r."{col}" = s."{col}"' for col in key_columns)
+
+    cursor = conn.cursor()
+    cursor.execute(f"""
+        SELECT MAX(ABS(DATEDIFF('second', r."{timestamp_column}", s."{timestamp_column}")))
+        FROM {database}.{raw_schema}.{raw_table} r
+        JOIN {database}.{silver_schema}.{silver_table} s
+            ON {join_clause};
+    """)
+    result = cursor.fetchone()[0]
+    return float(result) if result is not None else 0.0
